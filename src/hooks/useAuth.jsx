@@ -58,16 +58,14 @@ export function AuthProvider({ children }) {
     setUser(null); setProfile(null)
   }
 
-  // Reset upload count if week has changed
-  async function checkWeekReset() {
+  // Reset upload count if month has changed
+  async function checkMonthReset() {
     if (!profile || !user) return
     const resetAt = new Date(profile.week_reset_at || 0)
     const now = new Date()
-    const dayOfWeek = now.getDay() // 0=Sun,1=Mon
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
-    monday.setHours(0, 0, 0, 0)
-    if (resetAt < monday) {
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    firstOfMonth.setHours(0, 0, 0, 0)
+    if (resetAt < firstOfMonth) {
       await supabase.from('profiles').update({
         uploads_this_week: 0,
         week_reset_at: now.toISOString(),
@@ -77,7 +75,7 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    if (profile) checkWeekReset()
+    if (profile) checkMonthReset()
   }, [profile?.id])
 
   const isPro = profile?.is_pro === true

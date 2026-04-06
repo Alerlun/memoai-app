@@ -140,7 +140,7 @@ export default function LandingPage() {
           </div>
 
           <p style={{ fontSize: 12, color: 'rgba(78,78,96,.8)', fontWeight: 600, letterSpacing: '.3px', animation: 'fadeIn .7s ease .5s both' }}>
-            ✓ No credit card required &nbsp;·&nbsp; ✓ Free forever plan &nbsp;·&nbsp; ✓ 3 uploads/week free
+            ✓ No credit card required &nbsp;·&nbsp; ✓ Free forever plan &nbsp;·&nbsp; ✓ 3 uploads/month free
           </p>
         </div>
 

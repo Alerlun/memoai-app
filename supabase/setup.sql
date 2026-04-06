@@ -85,13 +85,13 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- ── 4. Weekly upload reset (runs via pg_cron) ──────────────
+-- ── 4. Monthly upload reset (runs via pg_cron) ──────────────
 -- First enable pg_cron: Database → Extensions → enable pg_cron
 -- Then run:
 --
 -- select cron.schedule(
 --   'reset-weekly-uploads',
---   '0 0 * * 1',   -- every Monday at 00:00 UTC
+--   '0 0 1 * *',   -- 1st of every month at 00:00 UTC
 --   $$
 --     update public.profiles
 --     set uploads_this_week = 0,

@@ -1,7 +1,7 @@
 // supabase/functions/reset-weekly-uploads/index.ts
-// This runs every Monday at 00:00 UTC via a Supabase cron job
+// This runs on the 1st of every month at 00:00 UTC via a Supabase cron job
 // Set up in Supabase dashboard: Database → Extensions → pg_cron
-// SQL: select cron.schedule('reset-uploads', '0 0 * * 1', 'select net.http_post(...)');
+// SQL: select cron.schedule('reset-uploads', '0 0 1 * *', 'select net.http_post(...)');
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'

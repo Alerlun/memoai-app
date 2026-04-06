@@ -40,10 +40,10 @@ export const translations = {
     no_sets_yet: 'No study sets yet.',
     upload_to_start: 'Upload material to get started!',
     create_first_set: 'Create First Set',
-    uploads_left: 'free uploads left this week',
-    upload_limit_reached: 'Weekly upload limit reached',
+    uploads_left: 'free uploads left this month',
+    upload_limit_reached: 'Monthly upload limit reached',
     upgrade_unlimited: 'Upgrade for unlimited uploads.',
-    free_plan_limit: 'Free plan: 3 uploads/week.',
+    free_plan_limit: 'Free plan: 3 uploads/month.',
     upgrade: 'Upgrade',
 
     // Upload
@@ -193,10 +193,10 @@ export const translations = {
     no_sets_yet: 'Inga studiepaket ännu.',
     upload_to_start: 'Ladda upp material för att börja!',
     create_first_set: 'Skapa första paketet',
-    uploads_left: 'gratis uppladdningar kvar denna vecka',
-    upload_limit_reached: 'Veckogräns för uppladdningar nådd',
+    uploads_left: 'gratis uppladdningar kvar denna månad',
+    upload_limit_reached: 'Månadsgräns för uppladdningar nådd',
     upgrade_unlimited: 'Uppgradera för obegränsade uppladdningar.',
-    free_plan_limit: 'Gratisplan: 3 uppladdningar/vecka.',
+    free_plan_limit: 'Gratisplan: 3 uppladdningar/månad.',
     upgrade: 'Uppgradera',
 
     // Upload

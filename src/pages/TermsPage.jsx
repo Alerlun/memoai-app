@@ -16,7 +16,7 @@ const SECTIONS = [
   },
   {
     title: '4. Subscription Plans',
-    body: `MemoAI offers two subscription tiers:\n\n• Free Plan — Up to 3 content uploads per week. Access to core study features including flashcards, quiz mode, and study plans.\n\n• Pro Plan — Unlimited uploads per week, access to all advanced features, and priority processing. The Pro Plan is billed at €4.99 per month (or the local currency equivalent displayed at checkout).`,
+    body: `MemoAI offers two subscription tiers:\n\n• Free Plan — Up to 3 content uploads per month. Access to core study features including flashcards, quiz mode, and study plans.\n\n• Pro Plan — Unlimited uploads per month, access to all advanced features, and priority processing. The Pro Plan is billed at €4.99 per month (or the local currency equivalent displayed at checkout).`,
   },
   {
     title: '5. Billing and Payment',
