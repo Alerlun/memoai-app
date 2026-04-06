@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { LangProvider } from './hooks/useLang'
 import { ThemeProvider } from './hooks/useTheme'
