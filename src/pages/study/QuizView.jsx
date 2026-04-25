@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLang } from '../../hooks/useLang'
 import { XP_VALUES } from '../../lib/xp'
@@ -35,10 +35,11 @@ function Confetti() {
 const DIFF_COLOR = { easy: 'var(--gn)', medium: 'var(--am)', hard: 'var(--rd)' }
 const MAX_HEARTS = 3
 
-export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied, onSessionComplete }) {
+export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied, onSessionComplete, onRegenerateQuiz }) {
   const { t } = useLang()
   const nav = useNavigate()
-  const quiz = set.quiz || []
+  const [quiz, setQuiz] = useState(set.quiz || [])
+  const [regenerating, setRegenerating] = useState(false)
   const [qi, setQi] = useState(0)
   const [qscore, setQscore] = useState(0)
   const [answered, setAnswered] = useState(false)
@@ -47,8 +48,10 @@ export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied,
   const [selected, setSelected] = useState(null)
   const [hearts, setHearts] = useState(MAX_HEARTS)
   const [shakingHeart, setShakingHeart] = useState(false)
+  const [combo, setCombo] = useState(0)
   const scoreRef    = useRef(0)
   const heartsRef   = useRef(MAX_HEARTS)
+  const comboRef    = useRef(0)
   const startTimeRef = useRef(Date.now())
 
   const q = quiz[qi]
@@ -64,13 +67,20 @@ export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied,
       scoreRef.current++
       setQscore(scoreRef.current)
       onXPGain?.(XP_VALUES.QUIZ_CORRECT)
+      comboRef.current++
+      setCombo(comboRef.current)
+      // Bonus XP at combo thresholds (fires once each)
+      if (comboRef.current === 3)  onXPGain?.(5)
+      if (comboRef.current === 5)  onXPGain?.(10)
+      if (comboRef.current === 10) onXPGain?.(20)
     } else {
+      comboRef.current = 0
+      setCombo(0)
       heartsRef.current--
       setHearts(heartsRef.current)
       setShakingHeart(true)
       setTimeout(() => setShakingHeart(false), 500)
       if (heartsRef.current <= 0) {
-        // Trigger game over after showing the wrong answer briefly
         setTimeout(() => setGameOver(true), 1200)
       }
     }
@@ -110,6 +120,18 @@ export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied,
     setQuizDone(false); setGameOver(false)
     setHearts(MAX_HEARTS); heartsRef.current = MAX_HEARTS
     startTimeRef.current = Date.now()
+  }
+
+  async function handleRegenerate() {
+    if (!onRegenerateQuiz) return
+    setRegenerating(true)
+    try {
+      const newQuiz = await onRegenerateQuiz()
+      setQuiz(newQuiz)
+      retry()
+    } finally {
+      setRegenerating(false)
+    }
   }
 
   if (!quiz.length) return (
@@ -160,9 +182,17 @@ export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied,
                 <span key={i} style={{ fontSize:22 }}>❤️</span>
               ))}
             </div>
-            <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
-              <button className="btn btn-s" style={{ flex:1 }} onClick={() => nav('/')}>🏠 {t('home')}</button>
-              <button className="btn btn-p" style={{ flex:1 }} onClick={retry}>Play Again</button>
+            <div style={{ display:'flex', gap:8, justifyContent:'center', flexDirection:'column' }}>
+              {onRegenerateQuiz && (
+                <button className="btn btn-p btn-w" onClick={handleRegenerate} disabled={regenerating}
+                  style={{ background:'linear-gradient(135deg,#fbbf24,#f59e0b)', border:'none', fontWeight:800 }}>
+                  {regenerating ? '✨ Generating…' : '✨ Generate New Quiz'}
+                </button>
+              )}
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-s" style={{ flex:1 }} onClick={() => nav('/')}>🏠 {t('home')}</button>
+                <button className="btn btn-s" style={{ flex:1 }} onClick={retry}>Play Again</button>
+              </div>
             </div>
           </div>
         ) : (
@@ -198,14 +228,19 @@ export default function QuizView({ set, onUpdateCards, onXPGain, onCardsStudied,
   // ── Active Quiz ────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* Header: hearts + score */}
+      {/* Header: hearts + score + combo */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', gap: 4, animation: shakingHeart ? 'heartShake .4s ease' : 'none' }}>
           {Array.from({ length: MAX_HEARTS }).map((_, i) => (
             <span key={i} style={{ fontSize: 20, opacity: i < hearts ? 1 : .2, transition: 'opacity .3s' }}>❤️</span>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {combo >= 2 && (
+            <span key={combo} style={{ fontSize: 12, fontWeight: 900, color: '#f97316', background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)', borderRadius: 20, padding: '3px 10px', animation: 'celebIn .3s cubic-bezier(.34,1.56,.64,1)' }}>
+              🔥 {combo}× combo!
+            </span>
+          )}
           <span style={{ fontSize: 13, color: 'var(--t2)' }}>{t('question_of')} {qi + 1} {t('of')} {quiz.length}</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ac)' }}>{t('score')}: {qscore}</span>
           {q?.difficulty && (

@@ -3,7 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@13?target=deno'
+import Stripe from 'npm:stripe@13'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
@@ -43,16 +43,40 @@ serve(async (req) => {
       .single()
 
     if (profileError || !profile?.stripe_customer_id) {
-      throw new Error('No Stripe customer found. You may not have an active subscription.')
+      // No customer ID — reset pro status so the user can go through checkout
+      await supabase
+        .from('profiles')
+        .update({ is_pro: false, pro_expires_at: null })
+        .eq('id', user.id)
+      return new Response(
+        JSON.stringify({ error: 'No Stripe subscription found for this account. Your pro status has been reset — please subscribe again.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
 
     const { returnUrl } = await req.json()
 
     // Create Stripe Customer Portal session
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: profile.stripe_customer_id,
-      return_url: returnUrl || 'https://your-app.vercel.app/settings',
-    })
+    let portalSession
+    try {
+      portalSession = await stripe.billingPortal.sessions.create({
+        customer: profile.stripe_customer_id,
+        return_url: returnUrl || 'https://your-app.vercel.app/settings',
+      })
+    } catch (stripeErr: any) {
+      // Stale customer ID — clean it up so the user can re-subscribe
+      if (stripeErr?.code === 'resource_missing') {
+        await supabase
+          .from('profiles')
+          .update({ stripe_customer_id: null, is_pro: false, pro_expires_at: null })
+          .eq('id', user.id)
+        return new Response(
+          JSON.stringify({ error: 'Your billing record was not found in Stripe (possible test/live mode mismatch). Your account has been reset — please subscribe again.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+      throw stripeErr
+    }
 
     return new Response(
       JSON.stringify({ url: portalSession.url }),

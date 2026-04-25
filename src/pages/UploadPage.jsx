@@ -66,6 +66,10 @@ export default function UploadPage() {
   async function handleFile(file) {
     if (!file) return
     setError('')
+    if (file.size > 20 * 1024 * 1024) {
+      setError('File is too large (max 20 MB). Try a smaller file or paste text directly.')
+      return
+    }
     setFileLoading(true)
     try {
       const content = await readFileAsText(file)
@@ -254,7 +258,7 @@ export default function UploadPage() {
           onDragLeave={onDragLeave}
           onClick={() => fileInputRef.current?.click()}
           style={{
-            border: `2px dashed ${dragOver ? 'var(--ac)' : 'var(--s3)'}`,
+            border: `2px dashed ${dragOver ? 'var(--ac)' : 'var(--bd2)'}`,
             borderRadius: 'var(--r)',
             padding: '22px 16px',
             textAlign: 'center',
@@ -283,7 +287,7 @@ export default function UploadPage() {
             <div>
               <div style={{ fontSize: 28, marginBottom: 6 }}>📂</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)', marginBottom: 2 }}>Drop a file here or click to browse</div>
-              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Supports .pdf, .txt, .md</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>PDF, TXT, MD · Max 20 MB</div>
             </div>
           )}
         </div>

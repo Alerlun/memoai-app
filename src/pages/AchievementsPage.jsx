@@ -4,6 +4,40 @@ import Layout from '../components/Layout'
 import { ACHIEVEMENTS, RARITY } from '../lib/achievements'
 import { getLevelFromXP } from '../lib/xp'
 
+const PROGRESS_MAP = {
+  streak_3:     s => ({ current: s.streak,            max: 3,    unit: 'days'     }),
+  streak_7:     s => ({ current: s.streak,            max: 7,    unit: 'days'     }),
+  streak_30:    s => ({ current: s.streak,            max: 30,   unit: 'days'     }),
+  streak_100:   s => ({ current: s.streak,            max: 100,  unit: 'days'     }),
+  quiz_first:   s => ({ current: s.quizzesCompleted,  max: 1,    unit: 'quiz'     }),
+  quiz_10:      s => ({ current: s.quizzesCompleted,  max: 10,   unit: 'quizzes'  }),
+  quiz_50:      s => ({ current: s.quizzesCompleted,  max: 50,   unit: 'quizzes'  }),
+  perfect:      s => ({ current: s.perfectQuizzes,    max: 1,    unit: 'perfect'  }),
+  perfect_3:    s => ({ current: s.perfectQuizzes,    max: 3,    unit: 'perfect'  }),
+  perfect_10:   s => ({ current: s.perfectQuizzes,    max: 10,   unit: 'perfect'  }),
+  master_1:     s => ({ current: s.masteredCards,     max: 1,    unit: 'card'     }),
+  master_10:    s => ({ current: s.masteredCards,     max: 10,   unit: 'cards'    }),
+  master_50:    s => ({ current: s.masteredCards,     max: 50,   unit: 'cards'    }),
+  master_100:   s => ({ current: s.masteredCards,     max: 100,  unit: 'cards'    }),
+  master_500:   s => ({ current: s.masteredCards,     max: 500,  unit: 'cards'    }),
+  studied_10:   s => ({ current: s.totalCardsStudied, max: 10,   unit: 'cards'    }),
+  studied_100:  s => ({ current: s.totalCardsStudied, max: 100,  unit: 'cards'    }),
+  studied_500:  s => ({ current: s.totalCardsStudied, max: 500,  unit: 'cards'    }),
+  studied_1000: s => ({ current: s.totalCardsStudied, max: 1000, unit: 'cards'    }),
+  studied_5000: s => ({ current: s.totalCardsStudied, max: 5000, unit: 'cards'    }),
+  a_grade_5:    s => ({ current: s.aGrades,           max: 5,    unit: 'A grades' }),
+  a_grade_50:   s => ({ current: s.aGrades,           max: 50,   unit: 'A grades' }),
+  a_grade_100:  s => ({ current: s.aGrades,           max: 100,  unit: 'A grades' }),
+  level_5:      s => ({ current: s.level,             max: 5,    unit: 'level'    }),
+  level_10:     s => ({ current: s.level,             max: 10,   unit: 'level'    }),
+  level_25:     s => ({ current: s.level,             max: 25,   unit: 'level'    }),
+  level_50:     s => ({ current: s.level,             max: 50,   unit: 'level'    }),
+  level_100:    s => ({ current: s.level,             max: 100,  unit: 'level'    }),
+  set_1:        s => ({ current: s.setsCount,         max: 1,    unit: 'set'      }),
+  set_5:        s => ({ current: s.setsCount,         max: 5,    unit: 'sets'     }),
+  set_10:       s => ({ current: s.setsCount,         max: 10,   unit: 'sets'     }),
+}
+
 const CATEGORIES = [
   { key: 'streak',  label: '🔥 Streak',         ids: ['streak_3','streak_7','streak_30','streak_100'] },
   { key: 'goal',    label: '🎯 Daily Goal',       ids: ['goal_first','goal_7'] },
@@ -13,10 +47,14 @@ const CATEGORIES = [
   { key: 'sets',    label: '📚 Study Sets',       ids: ['set_1','set_5','set_10'] },
   { key: 'levels',  label: '⬆️ Levels',           ids: ['level_5','level_10','level_25','level_50','level_100', 'gotta_catch_em_all'] },
   { key: 'time',    label: '⏰ Time-based',        ids: ['early_bird','night_owl'] },
+  { key: 'grades',  label: '📋 Practice Tests',    ids: ['a_grade_5','a_grade_50','a_grade_100'] },
 ]
 
-function AchievementCard({ ach, unlocked }) {
+function AchievementCard({ ach, unlocked, stats }) {
   const rarity = RARITY[ach.rarity]
+  const prog = !unlocked && stats && PROGRESS_MAP[ach.id] ? PROGRESS_MAP[ach.id](stats) : null
+  const progPct = prog ? Math.min(100, Math.round((prog.current / prog.max) * 100)) : 0
+
   return (
     <div style={{
       background: unlocked ? rarity.bg : 'var(--s2)',
@@ -28,7 +66,7 @@ function AchievementCard({ ach, unlocked }) {
       alignItems: 'center',
       textAlign: 'center',
       gap: 6,
-      opacity: unlocked ? 1 : 0.45,
+      opacity: unlocked ? 1 : 0.55,
       transition: 'all .2s',
       position: 'relative',
     }}>
@@ -43,17 +81,43 @@ function AchievementCard({ ach, unlocked }) {
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: unlocked ? 'var(--tx)' : 'var(--t3)', lineHeight: 1.3 }}>{ach.title}</div>
       <div style={{ fontSize: 10, color: 'var(--t3)', lineHeight: 1.4 }}>{ach.desc}</div>
+      {prog && (
+        <div style={{ width: '100%', marginTop: 2 }}>
+          <div style={{ height: 4, background: 'var(--s3)', borderRadius: 4, overflow: 'hidden', marginBottom: 3 }}>
+            <div style={{ height: '100%', width: `${progPct}%`, background: 'var(--ac)', borderRadius: 4, transition: 'width .4s' }} />
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--t3)', fontWeight: 600 }}>
+            {Math.min(prog.current, prog.max)} / {prog.max} {prog.unit}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function AchievementsPage() {
-  const { achievements, totalXP, totalCardsStudied, quizzesCompleted, perfectQuizzes } = useAuth()
+  const { achievements, totalXP, totalCardsStudied, quizzesCompleted, perfectQuizzes, aGrades } = useAuth()
   const unlockedSet = new Set(achievements || [])
+
+  const streak = parseInt(localStorage.getItem('memoai_streak') || '0')
+  const lastStudy = localStorage.getItem('memoai_last_study') || ''
+  const today = new Date().toDateString()
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1)
+  const isActive = lastStudy === today || lastStudy === yesterday.toDateString()
+  const level = getLevelFromXP(totalXP)
+  const stats = {
+    streak: isActive ? streak : 0,
+    level,
+    totalCardsStudied: totalCardsStudied || 0,
+    quizzesCompleted:  quizzesCompleted  || 0,
+    perfectQuizzes:    perfectQuizzes    || 0,
+    aGrades:           aGrades           || 0,
+    masteredCards: 0, // not available on this page without sets data
+    setsCount: 0,
+  }
   const unlockedCount = ACHIEVEMENTS.filter(a => unlockedSet.has(a.id)).length
   const totalGS = ACHIEVEMENTS.filter(a => unlockedSet.has(a.id)).reduce((s, a) => s + a.gs, 0)
   const maxGS   = ACHIEVEMENTS.reduce((s, a) => s + a.gs, 0)
-  const level   = getLevelFromXP(totalXP)
 
   return (
     <Layout active="achievements">
@@ -123,7 +187,7 @@ export default function AchievementsPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
                 {catAchs.map(ach => (
-                  <AchievementCard key={ach.id} ach={ach} unlocked={unlockedSet.has(ach.id)} />
+                  <AchievementCard key={ach.id} ach={ach} unlocked={unlockedSet.has(ach.id)} stats={stats} />
                 ))}
               </div>
             </div>

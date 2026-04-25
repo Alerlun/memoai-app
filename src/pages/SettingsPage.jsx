@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [loadingStripe, setLoadingStripe] = useState(false)
   const [stripeErr, setStripeErr] = useState('')
   const [banner, setBanner] = useState('')
+  const [showExportBanner, setShowExportBanner] = useState(false)
   const pollRef = useRef(null)
 
   const name = profile?.full_name || user?.user_metadata?.full_name || 'User'
@@ -58,7 +59,7 @@ export default function SettingsPage() {
   async function handleManageBilling() {
     setStripeErr(''); setLoadingStripe(true)
     try { await redirectToPortal() }
-    catch (e) { setStripeErr(t('portal_error')); setLoadingStripe(false) }
+    catch (e) { setStripeErr(e.message || t('portal_error')); setLoadingStripe(false) }
   }
 
   async function handleSignOut() {
@@ -289,8 +290,13 @@ export default function SettingsPage() {
           <CardRow
             label={t('export_sets')}
             value="›"
-            onClick={() => alert(t('export_soon'))}
+            onClick={() => setShowExportBanner(b => !b)}
           />
+          {showExportBanner && (
+            <div style={{ margin: '0 16px 12px', padding: '10px 14px', background: 'var(--aml)', border: '1px solid var(--am)', borderRadius: 'var(--rs)', fontSize: 13, color: 'var(--am)', fontWeight: 600 }}>
+              🚧 Export is coming soon — we're working on CSV and Anki formats. Stay tuned!
+            </div>
+          )}
           <CardRow
             label={t('sign_out')}
             danger

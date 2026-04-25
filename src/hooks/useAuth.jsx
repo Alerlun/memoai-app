@@ -185,6 +185,10 @@ export function AuthProvider({ children }) {
     updateProfileStats(delta)
   }, [updateProfileStats])
 
+  const recordAGrade = useCallback(() => {
+    updateProfileStats({ a_grades: 1 })
+  }, [updateProfileStats])
+
   // ── Derived values ───────────────────────────────────────────────────────────
   const totalXP           = profile?.total_xp ?? 0
   const xpThisWeek        = profile?.xp_this_week ?? 0
@@ -195,6 +199,7 @@ export function AuthProvider({ children }) {
   const totalCardsStudied = profile?.total_cards_studied ?? 0
   const perfectQuizzes    = profile?.perfect_quizzes ?? 0
   const quizzesCompleted  = profile?.quizzes_completed ?? 0
+  const aGrades           = profile?.a_grades ?? 0
 
   const isPro           = profile?.is_pro === true
   const proExpiresAt    = profile?.pro_expires_at ?? null
@@ -208,8 +213,8 @@ export function AuthProvider({ children }) {
       signUp, signIn, signOut, refreshProfile,
       totalXP, xpThisWeek, addXP,
       achievements, unlockAchievements,
-      totalCardsStudied, perfectQuizzes, quizzesCompleted,
-      addCardsStudied, recordQuizComplete,
+      totalCardsStudied, perfectQuizzes, quizzesCompleted, aGrades,
+      addCardsStudied, recordQuizComplete, recordAGrade,
     }}>
       {!loading && children}
     </AuthContext.Provider>

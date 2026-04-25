@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useSets } from '../hooks/useSets'
 import { useLang } from '../hooks/useLang'
 import { useAuth } from '../hooks/useAuth'
-import { XP_VALUES, DAILY_GOAL, getLevelFromXP, getMilestone, getNextMilestone } from '../lib/xp'
+import { XP_VALUES, DAILY_GOAL, getLevelFromXP, getMilestone, getNextMilestone, getSetLevel } from '../lib/xp'
+import { generateQuiz } from '../lib/ai'
 import { ACHIEVEMENTS, RARITY } from '../lib/achievements'
 import FlashcardsView from './study/FlashcardsView'
 import LearnView from './study/LearnView'
@@ -24,8 +25,8 @@ export default function StudyPage() {
   const { sets, updateProgress, updateSet } = useSets()
   const { t } = useLang()
   const { totalXP, addXP, achievements, unlockAchievements,
-          totalCardsStudied, perfectQuizzes, quizzesCompleted,
-          addCardsStudied, recordQuizComplete, profile } = useAuth()
+          totalCardsStudied, perfectQuizzes, quizzesCompleted, aGrades,
+          addCardsStudied, recordQuizComplete, recordAGrade, profile } = useAuth()
   const nav = useNavigate()
   const [mode, setMode]           = useState('cards')
   const [preStudy, setPreStudy]   = useState(true)
@@ -123,6 +124,7 @@ export default function StudyPage() {
       ultraSpeed: extraStats.ultraSpeed || false,
       earlyBird:  new Date().getHours() < 8,
       nightOwl:   new Date().getHours() >= 23,
+      aGrades:    (aGrades || 0) + (extraStats.aGrade ? 1 : 0),
     }
 
     const unlockedIds = achievements || []
@@ -230,6 +232,25 @@ export default function StudyPage() {
     checkAchievements(stats)
   }
 
+  // ── Practice test graded ──────────────────────────────────────────────────
+  function handleTestGraded(gradeLetter, xp, pct) {
+    handleXPGain(xp)
+    const isA = gradeLetter === 'A'
+    if (isA) {
+      recordAGrade()
+      updateSet(set.id, { best_test_grade: 'A' })
+    } else if (!set.best_test_grade) {
+      updateSet(set.id, { best_test_grade: gradeLetter })
+    } else {
+      // Keep best grade: A > B > C > D > F
+      const order = ['A','B','C','D','F']
+      const current = order.indexOf(set.best_test_grade)
+      const next    = order.indexOf(gradeLetter)
+      if (next < current) updateSet(set.id, { best_test_grade: gradeLetter })
+    }
+    checkAchievements({ aGrade: isA })
+  }
+
   const MODE_INFO = [
     { id:'cards', icon:'🃏', label:'Flashcards', desc:'Flip & self-rate' },
     { id:'learn', icon:'🧠', label:'Learn',       desc:'Spaced repetition' },
@@ -254,26 +275,36 @@ export default function StudyPage() {
         </div>
 
         {/* Coverage widget */}
-        {cards.length > 0 && (
-          <div className="card" style={{ padding:'14px 16px', marginBottom:18 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
-              <span style={{ fontSize:12, fontWeight:800, color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.5px' }}>Subject Coverage</span>
-              <span style={{ fontSize:12, fontWeight:700, color: masteredCount===cards.length?'var(--gn)':'var(--t2)' }}>{masteredCount}/{cards.length} mastered</span>
-            </div>
-            <div style={{ height:8, borderRadius:6, background:'var(--s3)', overflow:'hidden', display:'flex', marginBottom:10 }}>
-              <div style={{ width:`${cards.length?masteredCount/cards.length*100:0}%`, background:'var(--gn)', animation:'barGrow .9s ease', transition:'width .4s' }} />
-              <div style={{ width:`${cards.length?learningCount/cards.length*100:0}%`, background:'var(--am)', animation:'barGrow .9s .1s ease', transition:'width .4s' }} />
-            </div>
-            <div style={{ display:'flex', gap:6 }}>
-              {[{v:masteredCount,l:'Mastered',bg:'var(--gl)',c:'var(--gn)'},{v:learningCount,l:'Learning',bg:'var(--aml)',c:'var(--am)'},{v:notStartedCount,l:'New',bg:'var(--s2)',c:'var(--t3)'}].map(x=>(
-                <div key={x.l} style={{ flex:1, background:x.bg, borderRadius:8, padding:'6px 8px', textAlign:'center' }}>
-                  <div style={{ fontSize:18, fontWeight:900, color:x.c, lineHeight:1.1 }}>{x.v}</div>
-                  <div style={{ fontSize:10, color:x.c, fontWeight:700, marginTop:2 }}>{x.l}</div>
+        {cards.length > 0 && (() => {
+          const setLvl = getSetLevel(avgMemory, set.best_test_grade || null)
+          return (
+            <div className="card" style={{ padding:'14px 16px', marginBottom:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                <span style={{ fontSize:12, fontWeight:800, color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.5px' }}>Subject Coverage</span>
+                <span style={{ fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:12, background: setLvl.bg, color: setLvl.color }}>
+                  {setLvl.icon} {setLvl.label}{setLvl.locked ? ' 🔒' : ''}
+                </span>
+              </div>
+              <div style={{ height:8, borderRadius:6, background:'var(--s3)', overflow:'hidden', display:'flex', marginBottom:10 }}>
+                <div style={{ width:`${cards.length?masteredCount/cards.length*100:0}%`, background:'var(--gn)', animation:'barGrow .9s ease', transition:'width .4s' }} />
+                <div style={{ width:`${cards.length?learningCount/cards.length*100:0}%`, background:'var(--am)', animation:'barGrow .9s .1s ease', transition:'width .4s' }} />
+              </div>
+              <div style={{ display:'flex', gap:6 }}>
+                {[{v:masteredCount,l:'Mastered',bg:'var(--gl)',c:'var(--gn)'},{v:learningCount,l:'Learning',bg:'var(--aml)',c:'var(--am)'},{v:notStartedCount,l:'New',bg:'var(--s2)',c:'var(--t3)'}].map(x=>(
+                  <div key={x.l} style={{ flex:1, background:x.bg, borderRadius:8, padding:'6px 8px', textAlign:'center' }}>
+                    <div style={{ fontSize:18, fontWeight:900, color:x.c, lineHeight:1.1 }}>{x.v}</div>
+                    <div style={{ fontSize:10, color:x.c, fontWeight:700, marginTop:2 }}>{x.l}</div>
+                  </div>
+                ))}
+              </div>
+              {setLvl.locked && (
+                <div style={{ marginTop:10, fontSize:12, color:'var(--t3)', padding:'8px 10px', background:'var(--s2)', borderRadius:'var(--rs)', display:'flex', alignItems:'center', gap:6 }}>
+                  🔒 <span>Score <strong style={{ color:'var(--ac)' }}>A (90%+)</strong> on the Practice Test to unlock <strong style={{ color:'var(--gn)' }}>Master</strong></span>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Mode picker */}
         <div style={{ marginBottom:20 }}>
@@ -291,6 +322,30 @@ export default function StudyPage() {
             ))}
           </div>
         </div>
+
+        {/* What to study next suggestion */}
+        {cards.length > 0 && (() => {
+          let suggestion
+          if (avgMemory < 40)
+            suggestion = { mode: 'learn', icon: '🧠', label: 'Recommended: Learn', desc: 'Build memory with spaced repetition', color: 'var(--ac)' }
+          else if (avgMemory < 80)
+            suggestion = { mode: 'quiz',  icon: '🎯', label: 'Recommended: Quiz',  desc: 'Lock in your knowledge with a challenge', color: '#60a5fa' }
+          else if (set.best_test_grade !== 'A')
+            suggestion = { mode: 'test',  icon: '📝', label: 'Recommended: Practice Test', desc: 'Score an A to unlock Master status', color: '#f97316' }
+          else
+            suggestion = { mode: 'cards', icon: '🃏', label: 'Recommended: Flashcards', desc: "You've mastered this — keep it fresh", color: 'var(--gn)' }
+          return (
+            <div onClick={() => { setMode(suggestion.mode); setPreStudy(false) }}
+              style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 'var(--rs)', border: `1.5px solid ${suggestion.color}44`, background: `${suggestion.color}11`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all .15s' }}>
+              <span style={{ fontSize: 22 }}>{suggestion.icon}</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: suggestion.color }}>{suggestion.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 1 }}>{suggestion.desc}</div>
+              </div>
+              <span style={{ marginLeft: 'auto', color: suggestion.color, fontSize: 14 }}>→</span>
+            </div>
+          )
+        })()}
 
         <button className="btn btn-p btn-lg btn-w" onClick={() => { setMode('learn'); setPreStudy(false) }}>
           🧠 Start Studying
@@ -312,7 +367,7 @@ export default function StudyPage() {
         </div>
       </div>
 
-      <div style={{ background:'var(--sf)', borderBottom:'1px solid var(--bd)', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+      <div style={{ background:'var(--sf)', borderBottom:'1px solid var(--bd)', overflowX:'auto', WebkitOverflowScrolling:'touch', position:'sticky', top:0, zIndex:20 }}>
         <div style={{ display:'flex', padding:'0 6px', minWidth:'max-content' }}>
           {MODES.map(m => (
             <button key={m.id} onClick={() => setMode(m.id)}
@@ -355,8 +410,14 @@ export default function StudyPage() {
         )}
         {mode==='cards' && <FlashcardsView set={set} onUpdateCards={handleUpdateCards} onXPGain={handleXPGain} onCardsStudied={handleCardStudied} />}
         {mode==='learn' && <LearnView set={set} onUpdateCards={handleUpdateCards} onXPGain={handleXPGain} onCardsStudied={handleCardStudied} />}
-        {mode==='quiz'  && <QuizView set={set} onUpdateCards={handleUpdateCards} onXPGain={handleXPGain} onCardsStudied={handleCardStudied} onSessionComplete={handleSessionComplete} />}
-        {mode==='test'  && <PracticeTestView set={set} onSaveTest={qs => updateSet(set.id, { practice_test: qs })} />}
+        {mode==='quiz'  && <QuizView set={set} onUpdateCards={handleUpdateCards} onXPGain={handleXPGain} onCardsStudied={handleCardStudied} onSessionComplete={handleSessionComplete}
+          onRegenerateQuiz={async () => {
+            const newQuiz = await generateQuiz(set.text || '', set.flashcards || [])
+            await updateSet(set.id, { quiz: newQuiz })
+            return newQuiz
+          }}
+        />}
+        {mode==='test'  && <PracticeTestView set={set} onSaveTest={qs => updateSet(set.id, { practice_test: qs })} onTestGraded={handleTestGraded} />}
         {mode==='notes' && <MagicNotesView set={set} onSaveNotes={notes => updateSet(set.id, { magic_notes: notes })} />}
       </div>
 

@@ -27,7 +27,11 @@ export async function redirectToPortal() {
     headers,
     body: { returnUrl: `${window.location.origin}/settings` },
   })
-  if (error) throw new Error(error.message)
+  if (error) {
+    let msg = error.message
+    try { const body = await error.context?.json(); msg = body?.error || msg } catch {}
+    throw new Error(msg)
+  }
   if (data?.url) window.location.href = data.url
   else throw new Error('No portal URL returned')
 }

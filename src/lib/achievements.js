@@ -63,6 +63,11 @@ export const ACHIEVEMENTS = [
   // ── Time-based ────────────────────────────────────────────────────────────
   { id: 'early_bird', icon: '🌅', title: 'Early Bird',   desc: 'Study before 8 AM',             rarity: 'common', gs: 10, check: s => s.earlyBird  },
   { id: 'night_owl',  icon: '🌙', title: 'Night Owl',    desc: 'Study after 11 PM',             rarity: 'common', gs: 10, check: s => s.nightOwl   },
+
+  // ── A-grade practice tests ────────────────────────────────────────────────
+  { id: 'a_grade_5',   icon: '📋', title: 'Something Atleast…',   desc: 'Get 5 A\'s on practice tests',    rarity: 'rare',      gs: 20,  check: s => (s.aGrades ?? 0) >= 5   },
+  { id: 'a_grade_50',  icon: '⚖️', title: 'Lawyer Level Student', desc: 'Get 50 A\'s on practice tests',   rarity: 'epic',      gs: 50,  check: s => (s.aGrades ?? 0) >= 50  },
+  { id: 'a_grade_100', icon: '🌟', title: 'World Star Genius',    desc: 'Get 100 A\'s on practice tests',  rarity: 'legendary', gs: 100, check: s => (s.aGrades ?? 0) >= 100 },
 ]
 
 /*
@@ -83,5 +88,6 @@ export const ACHIEVEMENTS = [
     ultraSpeed:        boolean  // quiz finished in < 60 s
     earlyBird:         boolean  // studied before 8 AM today
     nightOwl:          boolean  // studied after 23:00 today
+    aGrades:           number   // cumulative A grades on practice tests
   }
 */

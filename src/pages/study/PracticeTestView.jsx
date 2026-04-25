@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { generatePracticeTest } from '../../lib/ai'
+import { getGrade, XP_VALUES } from '../../lib/xp'
 
-export default function PracticeTestView({ set, onSaveTest }) {
+export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
   const [questions, setQuestions] = useState(set.practice_test || null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [answers, setAnswers] = useState({})
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState('')
+  const [answers, setAnswers]     = useState({})
   const [submitted, setSubmitted] = useState(false)
-  const [score, setScore] = useState(null)
+  const [score, setScore]         = useState(null)
 
   async function generate() {
     setLoading(true); setError('')
@@ -36,8 +37,13 @@ export default function PracticeTestView({ set, onSaveTest }) {
       if (q.type === 'multiple_choice') { total++; if (answers[i] === q.correct) correct++ }
       else if (q.type === 'true_false') { total++; if (answers[i] === q.correct) correct++ }
     })
-    setScore({ correct, total, pct: Math.round(correct / total * 100) })
+    const pct   = Math.round(correct / total * 100)
+    const grade = getGrade(pct)
+    const xp    = XP_VALUES[`PRACTICE_TEST_${grade.letter}`] ?? 10
+    const result = { correct, total, pct, grade, xp }
+    setScore(result)
     setSubmitted(true)
+    onTestGraded?.(grade.letter, xp, pct)
   }
 
   const LABELS = ['A', 'B', 'C', 'D']
@@ -57,20 +63,72 @@ export default function PracticeTestView({ set, onSaveTest }) {
       <div style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 6, lineHeight: 1.6 }}>
         10 exam-style questions mixing multiple choice, true/false, and short answer. Generated once and saved.
       </div>
+      <div style={{ fontSize: 13, color: 'var(--ac)', fontWeight: 700, marginBottom: 16, padding: '10px 14px', background: 'var(--al)', borderRadius: 'var(--rs)', border: '1px solid rgba(139,127,245,.3)' }}>
+        🏆 Score an <strong>A (90%+)</strong> to unlock <strong>Master</strong> status for this set
+      </div>
       {error && <div className="err-box" style={{ marginBottom: 16 }}>{error}</div>}
       <button className="btn btn-p btn-lg" onClick={generate}>📝 Generate Practice Test</button>
     </div>
   )
 
+  const answeredCount = submitted ? questions.length : questions.filter((_, i) => answers[i] !== undefined).length
+  const progressPct   = Math.round(answeredCount / questions.length * 100)
+
   return (
     <div>
-      {submitted && score && (
-        <div style={{ background: score.pct >= 80 ? 'var(--gl)' : score.pct >= 60 ? 'var(--aml)' : 'var(--rl)', border: `1px solid ${score.pct >= 80 ? 'var(--gn)' : score.pct >= 60 ? 'var(--am)' : 'var(--rd)'}`, borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: 20, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: score.pct >= 80 ? 'var(--gn)' : score.pct >= 60 ? 'var(--am)' : 'var(--rd)' }}>{score.pct}%</div>
-          <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{score.correct}/{score.total} correct on graded questions</div>
-          <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>
-            {score.pct >= 80 ? 'Excellent work! 🎉' : score.pct >= 60 ? 'Good effort! Review the explanations below. 👍' : 'Keep studying — review explanations and try again. 💪'}
+      {/* Progress bar — sticky while answering */}
+      {!submitted && (
+        <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)', paddingBottom: 10, marginBottom: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: 'var(--t3)', marginBottom: 5 }}>
+            <span>{answeredCount < questions.length ? `Question ${answeredCount + 1} of ${questions.length}` : 'All answered — ready to submit!'}</span>
+            <span>{progressPct}%</span>
           </div>
+          <div style={{ height: 4, background: 'var(--s3)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${progressPct}%`, background: 'linear-gradient(90deg,var(--ac),#a855f7)', borderRadius: 4, transition: 'width .3s ease' }} />
+          </div>
+        </div>
+      )}
+
+      {submitted && score && (
+        <div style={{ background: score.grade.bg, border: `2px solid ${score.grade.color}`, borderRadius: 'var(--r)', padding: '20px', marginBottom: 20, textAlign: 'center' }}>
+          {/* Big grade letter */}
+          <div style={{ fontSize: 72, fontWeight: 900, color: score.grade.color, lineHeight: 1, marginBottom: 4, animation: 'gradeBounce .55s cubic-bezier(.34,1.56,.64,1) forwards' }}>
+            {score.grade.letter}
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: score.grade.color, marginBottom: 4 }}>
+            {score.pct}%
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)', marginBottom: 6 }}>
+            {score.correct}/{score.total} correct
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 12, lineHeight: 1.5 }}>
+            {score.grade.label}
+          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,.12)', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 800, color: score.grade.color }}>
+            ⚡ +{score.xp} XP earned
+          </div>
+          {score.grade.letter === 'A' && (
+            <div style={{ marginTop: 12, fontSize: 13, fontWeight: 700, color: '#4ade80', padding: '8px 12px', background: 'rgba(74,222,128,.15)', borderRadius: 'var(--rs)', border: '1px solid rgba(74,222,128,.35)' }}>
+              🏆 Master status unlocked for this set!
+            </div>
+          )}
+          {score.grade.letter !== 'A' && (
+            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--t3)', padding: '8px 12px', background: 'var(--s2)', borderRadius: 'var(--rs)' }}>
+              Score <strong style={{ color: '#4ade80' }}>A (90%+)</strong> to unlock Master status
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grade scale legend (before submit) */}
+      {!submitted && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, justifyContent: 'center' }}>
+          {[['A','90%+','#4ade80'],['B','80%','#60a5fa'],['C','70%','#fbbf24'],['D','60%','#f97316'],['F','<60%','#f87171']].map(([g, t, c]) => (
+            <div key={g} style={{ flex: 1, textAlign: 'center', padding: '6px 4px', borderRadius: 'var(--rs)', background: `${c}18`, border: `1px solid ${c}44` }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: c }}>{g}</div>
+              <div style={{ fontSize: 10, color: 'var(--t3)', fontWeight: 600 }}>{t}</div>
+            </div>
+          ))}
         </div>
       )}
 

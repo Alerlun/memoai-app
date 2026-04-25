@@ -196,10 +196,41 @@ function ActivityGraph() {
   )
 }
 
+// ── Streak urgency banner ──────────────────────────────────────────────────────
+function StreakUrgencyBanner({ streak }) {
+  const [timeLeft, setTimeLeft] = useState('')
+
+  useEffect(() => {
+    function calc() {
+      const now = new Date()
+      const midnight = new Date(); midnight.setHours(24, 0, 0, 0)
+      const diff = midnight - now
+      const h = Math.floor(diff / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      setTimeLeft(`${h}h ${m}m`)
+    }
+    calc()
+    const id = setInterval(calc, 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div style={{ background: 'rgba(249,115,22,.12)', border: '1px solid rgba(249,115,22,.4)', borderRadius: 'var(--r)', padding: '11px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span style={{ fontSize: 22, flexShrink: 0 }}>🔥</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#f97316' }}>Don't break your {streak}-day streak!</div>
+        <div style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>Study anything today · {timeLeft} left</div>
+      </div>
+    </div>
+  )
+}
+
+
 // ── Leaderboard widget ─────────────────────────────────────────────────────────
-function LeaderboardWidget({ currentUserId }) {
+function LeaderboardWidget({ currentUserId, limit = null }) {
   const [rows, setRows]       = useState([])
   const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     supabase.rpc('get_weekly_leaderboard')
@@ -207,26 +238,52 @@ function LeaderboardWidget({ currentUserId }) {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return null
+  if (loading) return (
+    <div style={{ marginBottom: 22 }}>
+      <div className="sechd">🏅 Weekly XP Leaderboard</div>
+      {[0,1,2].map(i => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 'var(--rs)', marginBottom: 6, height: 48 }}>
+          <div className="shimmer" style={{ width: 24, height: 16, borderRadius: 4 }} />
+          <div className="shimmer" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div className="shimmer" style={{ height: 12, borderRadius: 4, width: '55%' }} />
+            <div className="shimmer" style={{ height: 9, borderRadius: 4, width: '30%' }} />
+          </div>
+          <div className="shimmer" style={{ width: 48, height: 14, borderRadius: 4 }} />
+        </div>
+      ))}
+    </div>
+  )
   if (!rows.length) return null
+
+  const visibleRows = limit && !expanded ? rows.slice(0, limit) : rows
+  const hasMore = limit && rows.length > limit
 
   return (
     <div style={{ marginBottom: 22 }}>
-      <div className="sechd">🏅 Weekly XP Leaderboard</div>
-      {rows.map((r, i) => {
-        const isMe = false // We don't have user id in leaderboard data easily
+      <div className="sechd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>🏅 Weekly XP Leaderboard</span>
+        {hasMore && (
+          <span style={{ fontSize: 11, color: 'var(--ac)', fontWeight: 700, cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+            {expanded ? 'Show less' : `See all ${rows.length} →`}
+          </span>
+        )}
+      </div>
+      {visibleRows.map((r, i) => {
+        const isMe = r.user_id === currentUserId
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: i === 0 ? 'var(--al)' : 'var(--sf)', border: `1px solid ${i === 0 ? 'var(--ac)' : 'var(--bd)'}`, borderRadius: 'var(--rs)', marginBottom: 6 }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: isMe ? 'var(--al)' : i === 0 ? 'rgba(251,191,36,.08)' : 'var(--sf)', border: `1px solid ${isMe ? 'var(--ac)' : i === 0 ? 'rgba(251,191,36,.35)' : 'var(--bd)'}`, borderRadius: 'var(--rs)', marginBottom: 6 }}>
             <span style={{ fontSize: i < 3 ? 18 : 13, fontWeight: 700, minWidth: 24, textAlign: 'center' }}>{medal}</span>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,var(--ac),#a855f7)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: isMe ? 'linear-gradient(135deg,var(--ac),#a855f7)' : 'var(--s3)', color: isMe ? '#fff' : 'var(--t2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
               {r.avatar_char}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.display_name}</div>
+              <div style={{ fontSize: 13, fontWeight: isMe ? 800 : 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: isMe ? 'var(--ac)' : 'var(--tx)' }}>{r.display_name}</div>
               <div style={{ fontSize: 10, color: 'var(--t3)' }}>Lv.{getLevelFromXP(r.total_xp)}</div>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ac)' }}>⚡ {r.xp_this_week}</div>
+            {isMe && <span style={{ fontSize: 9, fontWeight: 800, background: 'var(--ac)', color: '#fff', borderRadius: 6, padding: '2px 6px', letterSpacing: '.4px', flexShrink: 0 }}>YOU</span>}
+            <div style={{ fontSize: 13, fontWeight: 800, color: isMe ? 'var(--ac)' : 'var(--t2)' }}>⚡ {r.xp_this_week}</div>
           </div>
         )
       })}
@@ -302,178 +359,111 @@ export default function HomePage() {
     })
   }, [sets])
 
+  const weakCards = sets
+    .flatMap(s => (s.flashcards || []).map(c => ({ ...c, setTitle: s.title, setId: s.id })))
+    .filter(c => (c.memoryScore || 0) < 40 && c.repetitions > 0)
+    .sort((a, b) => (a.memoryScore || 0) - (b.memoryScore || 0))
+    .slice(0, 3)
+
   return (
     <Layout active="home">
       <div className="page screen">
-        {/* Greeting */}
-        <div style={{ marginBottom: 16 }}>
-          <h1 style={{ fontSize: 23, fontWeight: 800, letterSpacing: '-.4px' }}>{t(greetKey())}{firstName ? `, ${firstName}` : ''} 👋</h1>
-          <p style={{ color: 'var(--t2)', fontSize: 14, marginTop: 3 }}>
-            {sets.length} {sets.length === 1 ? t('study_set') : t('study_sets')} {t('study_sets_ready')}
-          </p>
+
+        {/* ── Compact header ── */}
+        <div style={{ marginBottom: 14 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.4px' }}>
+            {t(greetKey())}{firstName ? `, ${firstName}` : ''} 👋
+          </h1>
         </div>
 
-        {/* Upload limit banner */}
-        {!isPro && (
-          <div style={{ background: uploadsLeft === 0 ? 'var(--rl)' : 'var(--aml)', border: `1px solid ${uploadsLeft === 0 ? 'var(--rd)' : 'var(--am)'}`, borderRadius: 'var(--r)', padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        {/* ── Single stat bar: streak | level + XP | goal ring ── */}
+        <div className="card" style={{ padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontSize: 20 }}>🔥</span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: uploadsLeft === 0 ? 'var(--rd)' : 'var(--am)' }}>
-                {uploadsLeft === 0 ? `⚠️ ${t('upload_limit_reached')}` : `📤 ${uploadsLeft} ${t('uploads_left')}`}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>
-                {uploadsLeft === 0 ? t('upgrade_unlimited') : t('free_plan_limit')}
-              </div>
-            </div>
-            <button className="btn btn-pro btn-sm" onClick={() => nav('/settings')}>{t('upgrade')}</button>
-          </div>
-        )}
-
-        {/* Stats + Daily Goal Ring */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, margin: '0 0 18px', alignItems: 'stretch' }}>
-          {[
-            { v: sets.length,   l: sets.length === 1 ? t('study_set') : t('study_sets'), icon: '📚' },
-            { v: totalCards,    l: t('cards'),    icon: '🃏' },
-            { v: isPro ? '∞' : `${uploadsThisWeek}/${FREE_UPLOAD_LIMIT}`, l: t('uploads'), icon: '📤' },
-          ].map(({ v, l }) => (
-            <div key={l} className="card" style={{ padding: '12px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--ac)', letterSpacing: -1 }}>{v}</div>
-              <div style={{ fontSize: 10, color: 'var(--t2)', marginTop: 3, fontWeight: 500 }}>{l}</div>
-            </div>
-          ))}
-          {/* Daily Goal Ring — replaces streak in the grid */}
-          <div className="card" style={{ padding: '10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <GoalRing count={goalCount} goal={DAILY_GOAL} streak={goalStreak} />
-          </div>
-        </div>
-
-        {/* Streak + XP Level Bar */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-          {/* Streak pill */}
-          <div className="card" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <span style={{ fontSize: 22 }}>🔥</span>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: displayStreak > 0 ? 'var(--am)' : 'var(--t3)', lineHeight: 1 }}>{displayStreak}</div>
-              <div style={{ fontSize: 10, color: 'var(--t3)', fontWeight: 600 }}>day streak</div>
+              <div style={{ fontSize: 17, fontWeight: 900, color: displayStreak > 0 ? 'var(--am)' : 'var(--t3)', lineHeight: 1 }}>{displayStreak}</div>
+              <div style={{ fontSize: 9, color: 'var(--t3)', fontWeight: 600 }}>streak</div>
             </div>
           </div>
-
-          {/* XP Level Bar */}
+          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bd)' }} />
           {(() => {
             const { level, progress, required, pct } = getXPProgress(totalXP)
-            const next = getNextMilestone(level)
-            const cur  = MILESTONES.find(m => m.level === level)
             return (
-              <div className="card" style={{ padding: '10px 14px', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ background: 'linear-gradient(135deg,var(--ac),#a855f7)', borderRadius: 7, padding: '3px 9px', fontSize: 12, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
-                    Lv.{level}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 7, borderRadius: 5, background: 'var(--s3)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,var(--ac),#a855f7)', borderRadius: 5, transition: 'width .5s ease' }} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--t2)', fontWeight: 600, flexShrink: 0 }}>
-                    {progress}/{required}
-                  </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <div style={{ background: 'linear-gradient(135deg,var(--ac),#a855f7)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                  Lv.{level}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--t3)' }}>
-                  {cur ? `${cur.icon} ${cur.label} · ` : ''}
-                  {next ? `Next: ${next.icon} Lv.${next.level}` : '🏆 Max!'}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ height: 5, borderRadius: 4, background: 'var(--s3)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,var(--ac),#a855f7)', borderRadius: 4, transition: 'width .5s ease' }} />
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--t3)', marginTop: 2 }}>{progress}/{required} XP</div>
                 </div>
               </div>
             )
           })()}
+          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bd)' }} />
+          <GoalRing count={goalCount} goal={DAILY_GOAL} streak={goalStreak} />
         </div>
 
-        {/* Activity Graph */}
-        <ActivityGraph />
+        {/* ── Upload limit — only when at 0 ── */}
+        {!isPro && uploadsLeft === 0 && (
+          <div style={{ background: 'var(--rl)', border: '1px solid var(--rd)', borderRadius: 'var(--r)', padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--rd)' }}>⚠️ {t('upload_limit_reached')}</div>
+            <button className="btn btn-pro btn-sm" onClick={() => nav('/settings')}>{t('upgrade')}</button>
+          </div>
+        )}
 
-        {/* ── Today's Focus (Daily Smart Review) ── */}
+        {/* ── Streak urgency banner ── */}
+        {displayStreak > 0 && lastStudy !== today && <StreakUrgencyBanner streak={displayStreak} />}
+
+        {/* ── Today's Focus hero card ── */}
         {dailyReview && (
-          <div className="card" style={{ padding: '14px 16px', marginBottom: 18, background: 'linear-gradient(135deg,var(--al),rgba(168,85,247,.07))', border: '1px solid var(--ac)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div className="card" style={{ padding: '16px', marginBottom: 14, background: 'linear-gradient(135deg,var(--al),rgba(168,85,247,.07))', border: '1px solid var(--ac)' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
+              🎯 Today's Focus
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: weakCards.length ? 10 : 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 3 }}>
-                  🎯 Today's Focus
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx)', marginBottom: 2 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--tx)', marginBottom: 2 }}>
                   {dailyReview.count} card{dailyReview.count !== 1 ? 's' : ''} waiting for review
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--t2)' }}>
-                  AI-selected: most overdue + lowest memory scores
-                </div>
+                <div style={{ fontSize: 11, color: 'var(--t2)' }}>Most overdue · lowest memory scores</div>
               </div>
-              <button className="btn btn-p" style={{ flexShrink: 0 }}
-                onClick={() => nav(`/study/${dailyReview.bestSetId}?mode=learn`)}>
+              <button className="btn btn-p" style={{ flexShrink: 0 }} onClick={() => nav(`/study/${dailyReview.bestSetId}?mode=learn`)}>
                 Start →
               </button>
             </div>
-            {/* Top 3 preview */}
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {dailyReview.cards.slice(0, 3).map((c, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-                  <div style={{ width: 28, height: 18, borderRadius: 4, background: (c.memoryScore || 0) < 30 ? 'var(--rl)' : 'var(--aml)', color: (c.memoryScore || 0) < 30 ? 'var(--rd)' : 'var(--am)', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {c.memoryScore || 0}%
+            {weakCards.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {weakCards.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                    <div style={{ width: 30, height: 18, borderRadius: 4, background: 'var(--rl)', color: 'var(--rd)', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {c.memoryScore || 0}%
+                    </div>
+                    <span style={{ color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.q}</span>
                   </div>
-                  <span style={{ color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.q}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Review Forecast Calendar ── */}
-        {sets.length > 0 && forecast.some(d => d.count > 0) && (
-          <div style={{ marginBottom: 18 }}>
-            <div className="sechd">📅 Review Forecast</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
-              {forecast.map((d, i) => {
-                const maxCount = Math.max(...forecast.map(x => x.count), 1)
-                const intensity = d.count / maxCount
-                const hasCards = d.count > 0
-                return (
-                  <div key={i} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: d.isToday ? 'var(--ac)' : 'var(--t3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px' }}>
-                      {d.label}
-                    </div>
-                    <div style={{
-                      height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
-                      background: hasCards ? 'var(--al)' : 'var(--s2)',
-                    opacity: hasCards ? 0.4 + intensity * 0.6 : 1,
-                      border: `1.5px solid ${d.isToday ? 'var(--ac)' : hasCards ? 'rgba(99,102,241,.3)' : 'var(--bd)'}`,
-                    }}>
-                      <span style={{ fontSize: hasCards ? 13 : 11, fontWeight: 900, color: hasCards ? 'var(--ac)' : 'var(--t3)', lineHeight: 1 }}>
-                        {hasCards ? d.count : '·'}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Weak Areas */}
+        {/* ── Quest chips ── */}
         {(() => {
-          const weakCards = sets
-            .flatMap(s => (s.flashcards || []).map(c => ({ ...c, setTitle: s.title, setId: s.id })))
-            .filter(c => (c.memoryScore || 0) < 40 && c.repetitions > 0)
-            .sort((a, b) => (a.memoryScore || 0) - (b.memoryScore || 0))
-            .slice(0, 3)
-          if (!weakCards.length) return null
+          const quests = [
+            { icon: '🃏', label: 'Study 10 cards',    reward: '+25 XP', done: goalCount >= 10       },
+            { icon: '🎯', label: 'Hit daily goal',     reward: '+50 XP', done: goalCount >= DAILY_GOAL },
+            { icon: '🔥', label: 'Keep streak alive',  reward: '+30 XP', done: lastStudy === today   },
+          ]
           return (
-            <div style={{ marginBottom: 18 }}>
-              <div className="sechd">⚠️ Needs Review</div>
-              {weakCards.map((c, i) => (
-                <div key={i} className="card card-tap" style={{ padding: '11px 14px', marginBottom: 7, display: 'flex', alignItems: 'center', gap: 12, borderLeft: '3px solid var(--rd)' }}
-                  onClick={() => nav(`/study/${c.setId}?mode=learn`)}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.q}</div>
-                    <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>{c.setTitle}</div>
-                  </div>
-                  <div style={{ background: 'var(--rl)', borderRadius: 20, padding: '3px 8px', fontSize: 11, fontWeight: 700, color: 'var(--rd)', flexShrink: 0 }}>
-                    {c.memoryScore || 0}%
+            <div style={{ display: 'flex', gap: 6, marginBottom: 18, overflowX: 'auto', paddingBottom: 2 }}>
+              {quests.map((q, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 20, background: q.done ? 'var(--gl)' : 'var(--s2)', border: `1px solid ${q.done ? 'var(--gn)' : 'var(--bd)'}`, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ fontSize: 14 }}>{q.done ? '✅' : q.icon}</span>
+                  <div style={{ lineHeight: 1.2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: q.done ? 'var(--gn)' : 'var(--tx)', textDecoration: q.done ? 'line-through' : 'none' }}>{q.label}</div>
+                    <div style={{ fontSize: 9, color: q.done ? 'var(--gn)' : 'var(--t3)', fontWeight: 600 }}>{q.reward}</div>
                   </div>
                 </div>
               ))}
@@ -481,24 +471,7 @@ export default function HomePage() {
           )
         })()}
 
-        {/* Quick actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 22 }}>
-          <div onClick={() => nav('/upload')} style={{ background: 'var(--ac)', borderRadius: 'var(--r)', padding: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, boxShadow: 'var(--s1)', transition: 'all .18s' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--s2s)' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--s1)' }}>
-            <span style={{ fontSize: 26 }}>⚡</span>
-            <div><div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{t('new_set')}</div><div style={{ fontSize: 12, opacity: .72, color: '#fff' }}>{t('upload_material')}</div></div>
-          </div>
-          <div onClick={() => sets.length && nav(`/study/${sets[0].id}`)} className={`card${sets.length ? ' card-tap' : ''}`} style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12, opacity: sets.length ? 1 : .5 }}>
-            <span style={{ fontSize: 26 }}>▶️</span>
-            <div><div style={{ fontSize: 13, fontWeight: 700 }}>{t('continue_studying')}</div><div style={{ fontSize: 12, color: 'var(--t2)' }}>{t('resume_last')}</div></div>
-          </div>
-        </div>
-
-        {/* Weekly Leaderboard */}
-        <LeaderboardWidget currentUserId={user?.id} />
-
-        {/* Sets list */}
+        {/* ── Your Study Sets ── */}
         <div className="sechd">{t('your_study_sets')} <a onClick={() => nav('/upload')}>+ {t('new_set')}</a></div>
 
         {loading ? (
@@ -525,13 +498,13 @@ export default function HomePage() {
                 {s.icon || '📚'}
               </div>
               {(() => {
-                const lvl = getSetLevel(s.progress || 0)
+                const lvl = getSetLevel(s.progress || 0, s.best_test_grade || null)
                 return (
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.title}</div>
                       <span style={{ flexShrink: 0, background: lvl.bg, color: lvl.color, fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 10, textTransform: 'uppercase', letterSpacing: '.4px', whiteSpace: 'nowrap' }}>
-                        {lvl.icon} {lvl.label}
+                        {lvl.icon} {lvl.label}{lvl.locked ? ' 🔒' : ''}
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>{sTotal} {t('cards')} · {s.quiz?.length || 0} quiz</div>
@@ -552,6 +525,39 @@ export default function HomePage() {
             </div>
           )
         })}
+
+        {/* ── Review Forecast ── */}
+        {sets.length > 0 && forecast.some(d => d.count > 0) && (
+          <div style={{ marginBottom: 18 }}>
+            <div className="sechd">📅 Review Forecast</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+              {forecast.map((d, i) => {
+                const maxCount = Math.max(...forecast.map(x => x.count), 1)
+                const intensity = d.count / maxCount
+                const hasCards = d.count > 0
+                return (
+                  <div key={i} style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: d.isToday ? 'var(--ac)' : 'var(--t3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px' }}>
+                      {d.label}
+                    </div>
+                    <div style={{ height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: hasCards ? 'var(--al)' : 'var(--s2)', opacity: hasCards ? 0.4 + intensity * 0.6 : 1, border: `1.5px solid ${d.isToday ? 'var(--ac)' : hasCards ? 'rgba(99,102,241,.3)' : 'var(--bd)'}` }}>
+                      <span style={{ fontSize: hasCards ? 13 : 11, fontWeight: 900, color: hasCards ? 'var(--ac)' : 'var(--t3)', lineHeight: 1 }}>
+                        {hasCards ? d.count : '·'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Leaderboard (top 3 collapsed) ── */}
+        <LeaderboardWidget currentUserId={user?.id} limit={3} />
+
+        {/* ── Activity Graph ── */}
+        <ActivityGraph />
+
       </div>
     </Layout>
   )
