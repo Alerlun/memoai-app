@@ -286,8 +286,8 @@ export default function StudyPage() {
                 </span>
               </div>
               <div style={{ height:8, borderRadius:6, background:'var(--s3)', overflow:'hidden', display:'flex', marginBottom:10 }}>
-                <div style={{ width:`${cards.length?masteredCount/cards.length*100:0}%`, background:'var(--gn)', animation:'barGrow .9s ease', transition:'width .4s' }} />
-                <div style={{ width:`${cards.length?learningCount/cards.length*100:0}%`, background:'var(--am)', animation:'barGrow .9s .1s ease', transition:'width .4s' }} />
+                <div style={{ width:`${cards.length?masteredCount/cards.length*100:0}%`, background:'var(--gn)', animation:'barGrow .9s ease', transformOrigin:'left', transition:'width .4s' }} />
+                <div style={{ width:`${cards.length?learningCount/cards.length*100:0}%`, background:'var(--am)', animation:'barGrow .9s .1s ease', transformOrigin:'left', transition:'width .4s' }} />
               </div>
               <div style={{ display:'flex', gap:6 }}>
                 {[{v:masteredCount,l:'Mastered',bg:'var(--gl)',c:'var(--gn)'},{v:learningCount,l:'Learning',bg:'var(--aml)',c:'var(--am)'},{v:notStartedCount,l:'New',bg:'var(--s2)',c:'var(--t3)'}].map(x=>(

@@ -513,8 +513,8 @@ export default function HomePage() {
               })()}
               <div style={{ width: 64, flexShrink: 0 }}>
                 <div style={{ height: 5, borderRadius: 4, background: 'var(--s3)', overflow: 'hidden', display: 'flex' }}>
-                  <div style={{ width: `${masteredPct}%`, background: 'var(--gn)', animation: 'barGrow .8s ease' }} />
-                  <div style={{ width: `${learningPct}%`, background: 'var(--am)', animation: 'barGrow .8s ease .1s both' }} />
+                  <div style={{ width: `${masteredPct}%`, background: 'var(--gn)', animation: 'barGrow .8s ease', transformOrigin: 'left' }} />
+                  <div style={{ width: `${learningPct}%`, background: 'var(--am)', animation: 'barGrow .8s ease .1s both', transformOrigin: 'left' }} />
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--t3)', textAlign: 'right', marginTop: 3 }}>{sMastered}/{sTotal}</div>
               </div>
