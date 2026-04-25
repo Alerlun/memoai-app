@@ -125,6 +125,31 @@ Return ONLY JSON array (example — "Berlin" is correct so correct=2):
   return JSON.parse(raw)
 }
 
+export async function gradeShortAnswers(shortAnswerQuestions) {
+  const items = shortAnswerQuestions.map((q, i) =>
+    `Q${i + 1}: "${q.q}"\nModel answer: "${q.sampleAnswer}"\nKey points: ${(q.keyPoints || []).join('; ')}\nStudent wrote: "${q.userAnswer || '(no answer given)'}"`
+  ).join('\n\n')
+
+  const prompt = `You are grading short-answer exam responses. Respond in the same language as the questions.
+
+Grading rubric:
+A = Accurate and complete — all key points covered
+B = Mostly correct — minor gap or small imprecision
+C = Main idea present but missing important details
+D = Partial understanding, major gaps or errors
+F = Wrong, off-topic, or blank
+
+${items}
+
+Return ONLY a JSON array with one object per question in the same order:
+[{"grade":"B","score":2,"feedback":"Your answer correctly explained X but missed Y.","improve":"To score higher, also mention Z and how it relates to the main concept."}]
+
+score values: A or B → 2 (full point), C → 1 (half point), D or F → 0`
+
+  const raw = await callOpenAI(prompt, 900)
+  return JSON.parse(raw)
+}
+
 export async function askTutor(userMessage, history, studyContent) {
   const ctx = studyContent?.length > 3000 ? studyContent.slice(0, 3000) + '…' : (studyContent || '')
   const systemPrompt = `You are Memo, an expert encouraging AI tutor. Use the Socratic method to help students discover answers.

@@ -1,14 +1,30 @@
 import { useState } from 'react'
-import { generatePracticeTest } from '../../lib/ai'
+import { generatePracticeTest, gradeShortAnswers } from '../../lib/ai'
 import { getGrade, XP_VALUES } from '../../lib/xp'
+
+const SA_GRADE_META = {
+  A: { color: '#4ade80', bg: 'rgba(74,222,128,.15)', border: 'rgba(74,222,128,.35)' },
+  B: { color: '#60a5fa', bg: 'rgba(96,165,250,.15)', border: 'rgba(96,165,250,.35)' },
+  C: { color: '#fbbf24', bg: 'rgba(251,191,36,.15)', border: 'rgba(251,191,36,.35)' },
+  D: { color: '#f97316', bg: 'rgba(249,115,22,.15)', border: 'rgba(249,115,22,.35)' },
+  F: { color: '#f87171', bg: 'rgba(248,113,113,.15)', border: 'rgba(248,113,113,.35)' },
+}
+
+function saPoints(score) {
+  if (score === 2) return 1
+  if (score === 1) return 0.5
+  return 0
+}
 
 export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
   const [questions, setQuestions] = useState(set.practice_test || null)
   const [loading, setLoading]     = useState(false)
+  const [grading, setGrading]     = useState(false)
   const [error, setError]         = useState('')
   const [answers, setAnswers]     = useState({})
   const [submitted, setSubmitted] = useState(false)
   const [score, setScore]         = useState(null)
+  const [saResults, setSaResults] = useState({})  // question index → {grade,score,feedback,improve}
 
   async function generate() {
     setLoading(true); setError('')
@@ -20,6 +36,7 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
       setAnswers({})
       setSubmitted(false)
       setScore(null)
+      setSaResults({})
     } catch {
       setError('Could not generate test. Try again.')
     } finally { setLoading(false) }
@@ -31,19 +48,51 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
     await generate()
   }
 
-  function submit() {
-    let correct = 0; let total = 0
-    questions.forEach((q, i) => {
-      if (q.type === 'multiple_choice') { total++; if (answers[i] === q.correct) correct++ }
-      else if (q.type === 'true_false') { total++; if (answers[i] === q.correct) correct++ }
-    })
-    const pct   = Math.round(correct / total * 100)
-    const grade = getGrade(pct)
-    const xp    = XP_VALUES[`PRACTICE_TEST_${grade.letter}`] ?? 10
-    const result = { correct, total, pct, grade, xp }
-    setScore(result)
-    setSubmitted(true)
-    onTestGraded?.(grade.letter, xp, pct)
+  async function submit() {
+    setGrading(true)
+    try {
+      // Collect short-answer questions
+      const saQueue = []
+      questions.forEach((q, i) => {
+        if (q.type === 'short_answer') {
+          saQueue.push({ idx: i, q: q.q, sampleAnswer: q.sampleAnswer, keyPoints: q.keyPoints, userAnswer: answers[i] || '' })
+        }
+      })
+
+      // Grade short answers with AI
+      let saGraded = []
+      try {
+        saGraded = await gradeShortAnswers(saQueue)
+      } catch {
+        saGraded = saQueue.map(() => ({ grade: 'F', score: 0, feedback: 'Could not grade automatically.', improve: '' }))
+      }
+
+      // Build result map and tally points
+      const resultMap = {}
+      let points = 0
+      questions.forEach((q, i) => {
+        if (q.type === 'multiple_choice' || q.type === 'true_false') {
+          if (answers[i] === q.correct) points++
+        }
+      })
+      saQueue.forEach((q, j) => {
+        const res = saGraded[j] || { grade: 'F', score: 0, feedback: '', improve: '' }
+        resultMap[q.idx] = res
+        points += saPoints(res.score)
+      })
+
+      const total = questions.length
+      const pct   = Math.round(points / total * 100)
+      const grade = getGrade(pct)
+      const xp    = XP_VALUES[`PRACTICE_TEST_${grade.letter}`] ?? 10
+
+      setSaResults(resultMap)
+      setScore({ points, total, pct, grade, xp })
+      setSubmitted(true)
+      onTestGraded?.(grade.letter, xp, pct)
+    } finally {
+      setGrading(false)
+    }
   }
 
   const LABELS = ['A', 'B', 'C', 'D']
@@ -71,12 +120,12 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
     </div>
   )
 
-  const answeredCount = submitted ? questions.length : questions.filter((_, i) => answers[i] !== undefined).length
+  const answeredCount = submitted ? questions.length : questions.filter((q, i) => q.type === 'short_answer' ? (answers[i] || '').trim().length > 0 : answers[i] !== undefined).length
   const progressPct   = Math.round(answeredCount / questions.length * 100)
 
   return (
     <div>
-      {/* Progress bar — sticky while answering */}
+      {/* Progress bar */}
       {!submitted && (
         <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)', paddingBottom: 10, marginBottom: 4 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: 'var(--t3)', marginBottom: 5 }}>
@@ -89,17 +138,20 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
         </div>
       )}
 
+      {/* Score card */}
       {submitted && score && (
         <div style={{ background: score.grade.bg, border: `2px solid ${score.grade.color}`, borderRadius: 'var(--r)', padding: '20px', marginBottom: 20, textAlign: 'center' }}>
-          {/* Big grade letter */}
           <div style={{ fontSize: 72, fontWeight: 900, color: score.grade.color, lineHeight: 1, marginBottom: 4, animation: 'gradeBounce .55s cubic-bezier(.34,1.56,.64,1) forwards' }}>
             {score.grade.letter}
           </div>
           <div style={{ fontSize: 28, fontWeight: 900, color: score.grade.color, marginBottom: 4 }}>
             {score.pct}%
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)', marginBottom: 6 }}>
-            {score.correct}/{score.total} correct
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)', marginBottom: 2 }}>
+            {score.points}/{score.total} points
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 8 }}>
+            (short answers may earn partial credit)
           </div>
           <div style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 12, lineHeight: 1.5 }}>
             {score.grade.label}
@@ -120,7 +172,7 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
         </div>
       )}
 
-      {/* Grade scale legend (before submit) */}
+      {/* Grade scale legend */}
       {!submitted && (
         <div style={{ display: 'flex', gap: 4, marginBottom: 16, justifyContent: 'center' }}>
           {[['A','90%+','#4ade80'],['B','80%','#60a5fa'],['C','70%','#fbbf24'],['D','60%','#f97316'],['F','<60%','#f87171']].map(([g, t, c]) => (
@@ -148,7 +200,7 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {q.options.map((opt, j) => {
                 const isSelected = answers[i] === j
-                const isCorrect = j === q.correct
+                const isCorrect  = j === q.correct
                 let bg = 'var(--s2)', border = 'var(--bd2)', color = 'var(--tx)'
                 if (submitted) {
                   if (isCorrect) { bg = 'var(--gl)'; border = 'var(--gn)'; color = 'var(--gn)' }
@@ -169,7 +221,7 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
             <div style={{ display: 'flex', gap: 8 }}>
               {[true, false].map(val => {
                 const isSelected = answers[i] === val
-                const isCorrect = val === q.correct
+                const isCorrect  = val === q.correct
                 let bg, border, color
                 if (submitted) {
                   if (isCorrect) { bg = 'var(--gl)'; border = 'var(--gn)'; color = 'var(--gn)' }
@@ -194,27 +246,51 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
             </div>
           )}
 
-          {q.type === 'short_answer' && (
-            <div>
-              <textarea className="inp" style={{ minHeight: 80, marginBottom: 8 }}
-                placeholder="Write your answer here…"
-                value={answers[i] || ''}
-                onChange={e => !submitted && setAnswers(a => ({ ...a, [i]: e.target.value }))}
-                disabled={submitted} />
-              {submitted && (
-                <div style={{ background: 'var(--al)', borderRadius: 'var(--rs)', padding: '12px 14px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac)', marginBottom: 4 }}>Sample Answer:</div>
-                  <div style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 8 }}>{q.sampleAnswer}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac)', marginBottom: 4 }}>Key Points:</div>
-                  {q.keyPoints?.map((pt, k) => (
-                    <div key={k} style={{ fontSize: 12, color: 'var(--t2)', display: 'flex', gap: 6, marginBottom: 3 }}>
-                      <span>•</span><span>{pt}</span>
+          {q.type === 'short_answer' && (() => {
+            const res  = saResults[i]
+            const meta = res ? (SA_GRADE_META[res.grade] || SA_GRADE_META.F) : null
+            return (
+              <div>
+                <textarea className="inp" style={{ minHeight: 80, marginBottom: 8 }}
+                  placeholder="Write your answer here…"
+                  value={answers[i] || ''}
+                  onChange={e => !submitted && setAnswers(a => ({ ...a, [i]: e.target.value }))}
+                  disabled={submitted} />
+
+                {submitted && res && (
+                  <div style={{ borderRadius: 'var(--rs)', overflow: 'hidden', border: `2px solid ${meta.border}` }}>
+                    {/* Grade banner */}
+                    <div style={{ background: meta.bg, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: meta.color, lineHeight: 1, minWidth: 28 }}>{res.grade}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: meta.color, marginBottom: 2 }}>AI Feedback</div>
+                        <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.5 }}>{res.feedback}</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+
+                    {/* How to improve */}
+                    {res.improve && res.grade !== 'A' && (
+                      <div style={{ background: 'var(--s2)', padding: '10px 14px', borderTop: `1px solid ${meta.border}` }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>How to score higher</div>
+                        <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.5 }}>{res.improve}</div>
+                      </div>
+                    )}
+
+                    {/* Sample answer */}
+                    <div style={{ background: 'var(--al)', padding: '10px 14px', borderTop: `1px solid ${meta.border}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>Model Answer</div>
+                      <div style={{ fontSize: 13, color: 'var(--t2)', marginBottom: q.keyPoints?.length ? 8 : 0 }}>{q.sampleAnswer}</div>
+                      {q.keyPoints?.map((pt, k) => (
+                        <div key={k} style={{ fontSize: 12, color: 'var(--t2)', display: 'flex', gap: 6, marginBottom: 3 }}>
+                          <span>•</span><span>{pt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {submitted && q.explanation && q.type !== 'short_answer' && (
             <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--s2)', borderRadius: 'var(--rs)', fontSize: 12, color: 'var(--t2)', lineHeight: 1.5 }}>
@@ -226,11 +302,19 @@ export default function PracticeTestView({ set, onSaveTest, onTestGraded }) {
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         {!submitted ? (
-          <button className="btn btn-p btn-w btn-lg"
-            disabled={questions.some((q, i) => q.type !== 'short_answer' && answers[i] === undefined)}
-            onClick={submit}>
-            Submit Test
-          </button>
+          grading ? (
+            <div style={{ width: '100%', padding: '14px', background: 'var(--al)', borderRadius: 'var(--r)', textAlign: 'center', border: '2px solid var(--ac)' }}>
+              <div style={{ fontSize: 20, marginBottom: 6, animation: 'pulse 1s infinite' }}>🤖</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ac)', marginBottom: 2 }}>AI is grading your short answers…</div>
+              <div style={{ fontSize: 12, color: 'var(--t3)' }}>Reading your responses and computing your score</div>
+            </div>
+          ) : (
+            <button className="btn btn-p btn-w btn-lg"
+              disabled={questions.some((q, i) => q.type !== 'short_answer' && answers[i] === undefined)}
+              onClick={submit}>
+              Submit Test
+            </button>
+          )
         ) : (
           <button className="btn btn-s btn-w" onClick={newTest}>📝 New Test</button>
         )}
