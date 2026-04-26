@@ -52,7 +52,7 @@ serve(async (req) => {
     // Look up the group by join code
     const { data: group, error: groupError } = await supabase
       .from('education_groups')
-      .select('id, name, is_active, owner_id')
+      .select('id, name, is_active, owner_id, max_students')
       .eq('join_code', sanitizedCode)
       .maybeSingle()
 
@@ -66,6 +66,16 @@ serve(async (req) => {
         JSON.stringify({ groupId: group.id, groupName: group.name, alreadyMember: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
+    }
+
+    // Enforce student limit
+    const maxStudents = group.max_students ?? 30
+    const { count: memberCount } = await supabase
+      .from('education_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', group.id)
+    if ((memberCount ?? 0) >= maxStudents) {
+      throw new Error(`This group is full (${maxStudents} student limit reached)`)
     }
 
     // Check if already a member

@@ -42,7 +42,7 @@ export default function SettingsPage() {
     async function fetchEduGroup() {
       const { data: group } = await supabase
         .from('education_groups')
-        .select('id, name, join_code, is_active, expires_at')
+        .select('id, name, join_code, is_active, expires_at, plan_type, max_students')
         .eq('id', educationGroupId)
         .single()
       if (group) setEduGroup(group)
@@ -430,7 +430,12 @@ export default function SettingsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                       <span style={{ fontSize: 24 }}>🎓</span>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#166534' }}>{t('education_active')}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#166534' }}>{t('education_active')}</div>
+                          <span style={{ fontSize: 10, fontWeight: 800, background: eduGroup.plan_type === 'school' ? '#1e3a5f' : '#4c1d95', color: '#fff', padding: '2px 7px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '.4px' }}>
+                            {eduGroup.plan_type === 'school' ? (lang === 'sv' ? 'Skola' : 'School') : (lang === 'sv' ? 'Klass' : 'Class')}
+                          </span>
+                        </div>
                         <div style={{ fontSize: 12, color: '#166534', opacity: .8, marginTop: 2 }}>{eduGroup.name}</div>
                       </div>
                     </div>
@@ -451,7 +456,7 @@ export default function SettingsPage() {
                   {/* Member list */}
                   <div style={{ padding: '10px 16px 4px' }}>
                     <div style={{ fontSize: 12, color: 'var(--t3)', fontWeight: 700, marginBottom: 8 }}>
-                      {t('edu_members')} ({eduMembers.length})
+                      {t('edu_members')} ({eduMembers.length} / {eduGroup.max_students ?? 30})
                     </div>
                     {eduMembers.length === 0 ? (
                       <div style={{ fontSize: 13, color: 'var(--t3)', paddingBottom: 8 }}>

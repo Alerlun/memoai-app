@@ -1,6 +1,6 @@
 // supabase/functions/create-education-checkout/index.ts
 // Deploy: supabase functions deploy create-education-checkout
-// Env:    STRIPE_SECRET_KEY, STRIPE_EDUCATION_PRICE_ID
+// Env:    STRIPE_SECRET_KEY, STRIPE_CLASS_PRICE_ID, STRIPE_SCHOOL_PRICE_ID
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -34,6 +34,11 @@ const MAX_BODY   = 4_096
 const RATE_LIMIT = 5
 const RATE_WIN   = 60 // 5 checkout attempts per hour
 
+const PLAN_CONFIG: Record<string, { maxStudents: number; priceEnvVar: string; label: string }> = {
+  class:  { maxStudents: 30,  priceEnvVar: 'STRIPE_CLASS_PRICE_ID',  label: 'Class Plan'  },
+  school: { maxStudents: 600, priceEnvVar: 'STRIPE_SCHOOL_PRICE_ID', label: 'School Plan' },
+}
+
 async function checkRateLimit(userId: string): Promise<void> {
   const since = new Date(Date.now() - RATE_WIN * 60_000).toISOString()
   const { count } = await supabase
@@ -60,9 +65,15 @@ serve(async (req) => {
 
     await checkRateLimit(user.id)
 
-    const { groupName, successUrl, cancelUrl } = await req.json()
+    const { groupName, planType = 'class', successUrl, cancelUrl } = await req.json()
     if (!groupName?.trim()) throw new Error('Missing groupName')
     if (groupName.trim().length > 200) throw new Error('Group name too long (max 200 characters)')
+
+    const plan = PLAN_CONFIG[planType]
+    if (!plan) throw new Error('Invalid plan type — must be "class" or "school"')
+
+    const priceId = Deno.env.get(plan.priceEnvVar)
+    if (!priceId) throw new Error(`${plan.label} is not configured — contact support`)
 
     // Generate a unique join code (retry on collision)
     let joinCode = ''
@@ -85,6 +96,8 @@ serve(async (req) => {
         owner_id: user.id,
         join_code: joinCode,
         is_active: false,
+        plan_type: planType,
+        max_students: plan.maxStudents,
       })
       .select()
       .single()
@@ -100,7 +113,6 @@ serve(async (req) => {
 
     let customerId = profile?.stripe_customer_id
 
-    // Verify existing customer is valid in the current Stripe environment (test/live mismatch clears it)
     if (customerId) {
       try {
         await stripe.customers.retrieve(customerId)
@@ -123,11 +135,7 @@ serve(async (req) => {
       await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
     }
 
-    // Also store customer on the group
     await supabase.from('education_groups').update({ stripe_customer_id: customerId }).eq('id', group.id)
-
-    const priceId = Deno.env.get('STRIPE_EDUCATION_PRICE_ID')
-    if (!priceId) throw new Error('STRIPE_EDUCATION_PRICE_ID not configured')
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

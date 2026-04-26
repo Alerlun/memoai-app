@@ -25,12 +25,13 @@ export async function redirectToCheckout(userEmail, userId) {
   else throw new Error('No checkout URL returned')
 }
 
-export async function redirectToEducationCheckout(groupName) {
+export async function redirectToEducationCheckout(groupName, planType = 'class') {
   const headers = await getAuthHeader()
   const { data, error } = await supabase.functions.invoke('create-education-checkout', {
     headers,
     body: {
       groupName,
+      planType,
       successUrl: `${window.location.origin}/settings?edu=success`,
       cancelUrl: `${window.location.origin}/education/setup?edu=cancelled`,
     },

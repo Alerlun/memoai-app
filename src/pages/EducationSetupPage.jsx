@@ -4,23 +4,52 @@ import { useLang } from '../hooks/useLang'
 import { redirectToEducationCheckout } from '../lib/stripe'
 import Layout from '../components/Layout'
 
+const PLANS = [
+  {
+    id: 'class',
+    icon: '🏫',
+    titleEn: 'Class Plan',
+    titleSv: 'Klassplan',
+    priceEn: '$29 / month',
+    priceSv: '$29 / månad',
+    limitEn: 'Up to 30 students',
+    limitSv: 'Upp till 30 elever',
+    featuresEn: ['1 class', 'Up to 30 students', 'AI tutor & study tools', 'Group join code', 'Member management'],
+    featuresSv: ['1 klass', 'Upp till 30 elever', 'AI-tutor & studieverktyg', 'Gruppkod', 'Medlemshantering'],
+  },
+  {
+    id: 'school',
+    icon: '🏛️',
+    titleEn: 'School Plan',
+    titleSv: 'Skolplan',
+    priceEn: '$149 / month',
+    priceSv: '$149 / månad',
+    limitEn: 'Up to 600 students',
+    limitSv: 'Upp till 600 elever',
+    featuresEn: ['Whole school', 'Up to 600 students', 'AI tutor & study tools', 'Group join code', 'Member management'],
+    featuresSv: ['Hela skolan', 'Upp till 600 elever', 'AI-tutor & studieverktyg', 'Gruppkod', 'Medlemshantering'],
+  },
+]
+
 export default function EducationSetupPage() {
   const { t, lang } = useLang()
   const nav = useNavigate()
   const [params] = useSearchParams()
 
+  const [planType, setPlanType] = useState('')
   const [groupName, setGroupName] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
 
   const eduCancelled = params.get('edu') === 'cancelled'
+  const sv = lang === 'sv'
 
   async function handleCreate(e) {
     e.preventDefault()
-    if (!groupName.trim()) return
+    if (!planType || !groupName.trim()) return
     setErr(''); setLoading(true)
     try {
-      await redirectToEducationCheckout(groupName.trim())
+      await redirectToEducationCheckout(groupName.trim(), planType)
     } catch (ex) {
       setErr(ex.message || t('stripe_error'))
       setLoading(false)
@@ -36,7 +65,7 @@ export default function EducationSetupPage() {
           onClick={() => nav('/settings')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--t2)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 20, padding: 0, fontFamily: 'inherit' }}
         >
-          ← {lang === 'sv' ? 'Tillbaka' : 'Back'}
+          ← {sv ? 'Tillbaka' : 'Back'}
         </button>
 
         {/* Cancelled banner */}
@@ -49,17 +78,43 @@ export default function EducationSetupPage() {
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-.4px', marginBottom: 6 }}>{t('edu_setup_title')}</div>
-          <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>{t('edu_setup_desc')}</div>
+          <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>{sv ? 'Välj en plan för din grupp.' : 'Choose a plan for your group.'}</div>
         </div>
 
-        {/* Feature highlights */}
-        <div style={{ background: 'rgba(139,127,245,.07)', border: '1px solid rgba(139,127,245,.18)', borderRadius: 'var(--r)', padding: 16, marginBottom: 24 }}>
-          {[t('edu_upsell_feat1'), t('edu_upsell_feat2'), t('edu_upsell_feat3'), t('edu_upsell_feat4')].map(f => (
-            <div key={f} style={{ fontSize: 13, display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, color: 'var(--t2)', lineHeight: 1.4 }}>
-              <span style={{ color: 'var(--ac)', flexShrink: 0 }}>✓</span>{f}
-            </div>
-          ))}
-          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ac)', marginTop: 6 }}>{t('edu_upsell_price')}</div>
+        {/* Plan cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+          {PLANS.map(plan => {
+            const selected = planType === plan.id
+            return (
+              <button
+                key={plan.id}
+                type="button"
+                onClick={() => setPlanType(plan.id)}
+                style={{
+                  background: selected ? 'rgba(139,127,245,.1)' : 'var(--c2)',
+                  border: selected ? '2px solid var(--ac)' : '2px solid var(--bd)',
+                  borderRadius: 'var(--r)',
+                  padding: '16px 14px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'border-color .15s, background .15s',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8 }}>{plan.icon}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2 }}>{sv ? plan.titleSv : plan.titleEn}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--ac)', marginBottom: 4 }}>{sv ? plan.priceSv : plan.priceEn}</div>
+                <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 10, fontWeight: 600 }}>{sv ? plan.limitSv : plan.limitEn}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {(sv ? plan.featuresSv : plan.featuresEn).map(f => (
+                    <div key={f} style={{ fontSize: 12, color: 'var(--t2)', display: 'flex', gap: 6 }}>
+                      <span style={{ color: selected ? 'var(--ac)' : 'var(--t3)', flexShrink: 0 }}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+              </button>
+            )
+          })}
         </div>
 
         {err && <div className="err-box" style={{ marginBottom: 16 }}>{err}</div>}
@@ -80,11 +135,16 @@ export default function EducationSetupPage() {
           <button
             className="btn btn-p btn-lg btn-w"
             type="submit"
-            disabled={loading || !groupName.trim()}
+            disabled={loading || !groupName.trim() || !planType}
             style={{ marginTop: 8, background: 'linear-gradient(135deg,#5b4fe9 0%,#7c6ff5 60%,#a855f7 100%)', border: 'none' }}
           >
             {loading ? t('opening_stripe') : t('edu_continue_payment')}
           </button>
+          {!planType && (
+            <p style={{ fontSize: 12, color: 'var(--am)', textAlign: 'center', marginTop: 8, fontWeight: 600 }}>
+              {sv ? 'Välj en plan ovan för att fortsätta' : 'Select a plan above to continue'}
+            </p>
+          )}
           <p style={{ fontSize: 11, color: 'var(--t3)', textAlign: 'center', marginTop: 8 }}>{t('secure_stripe')}</p>
         </form>
 
