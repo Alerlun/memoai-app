@@ -60,6 +60,17 @@ export async function joinEducationGroup(joinCode) {
   return data
 }
 
+export async function verifyEducationPayment() {
+  const headers = await getAuthHeader()
+  const { data, error } = await supabase.functions.invoke('verify-education-payment', { headers, body: {} })
+  if (error) {
+    let msg = error.message
+    try { const body = await error.context?.json(); msg = body?.error || msg } catch {}
+    throw new Error(msg)
+  }
+  return data // { status: 'activated' | 'no_pending_group' | 'payment_not_found' | 'no_customer' }
+}
+
 export async function leaveEducationGroup() {
   const headers = await getAuthHeader()
   const { data, error } = await supabase.functions.invoke('leave-education-group', { headers, body: {} })

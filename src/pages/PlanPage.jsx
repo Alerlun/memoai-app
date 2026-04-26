@@ -86,15 +86,15 @@ export default function PlanPage() {
     {
       key: 'education',
       name: 'Education',
-      price: sv ? '2 490 kr / mån' : '$249 / month',
+      price: sv ? 'Klass $29 / mån  ·  Skola $149 / mån' : 'Class $29 / mo  ·  School $149 / mo',
       badge: 'EDU',
       badgeColor: '#16a34a',
       current: isEducation,
       color: 'rgba(22,163,74,.06)',
       border: 'rgba(22,163,74,.3)',
       features: sv
-        ? ['Allt i Pro', 'Hela klassen med en kod', 'Obegränsat antal elever', 'Fungerar för K–12 och uni', 'Medlärare kan gå med']
-        : ['Everything in Pro', 'Whole class with one code', 'Unlimited students', 'Works for K–12 and uni', 'Co-teachers can join too'],
+        ? ['Allt i Pro', 'Klass: upp till 30 elever ($29/mån)', 'Skola: upp till 600 elever ($149/mån)', 'Gruppkod för snabb inbjudan', 'Fungerar för K–12 och uni', 'Medlärare kan gå med']
+        : ['Everything in Pro', 'Class: up to 30 students ($29/mo)', 'School: up to 600 students ($149/mo)', 'Group join code', 'Works for K–12 and uni', 'Co-teachers can join too'],
     },
   ]
 
@@ -181,21 +181,18 @@ export default function PlanPage() {
               )}
 
               {plan.key === 'education' && (
-                isEducation ? (
+                plan.current ? (
                   <button className="btn btn-s btn-sm" onClick={() => nav('/settings')}>
                     {sv ? 'Hantera grupp →' : 'Manage group →'}
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button
-                      className="btn btn-sm btn-w"
-                      style={{ background: '#16a34a', color: '#fff', border: 'none', fontWeight: 700 }}
-                      disabled={loadingEdu}
-                      onClick={() => nav('/education/welcome')}
-                    >
-                      {sv ? '🎓 Skapa eller gå med i en grupp →' : '🎓 Create or join a group →'}
-                    </button>
-                  </div>
+                  <button
+                    className="btn btn-sm btn-w"
+                    style={{ background: '#16a34a', color: '#fff', border: 'none', fontWeight: 700 }}
+                    onClick={() => nav('/education/setup')}
+                  >
+                    {sv ? '🎓 Kom igång →' : '🎓 Get started →'}
+                  </button>
                 )
               )}
             </div>

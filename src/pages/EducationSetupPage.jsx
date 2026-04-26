@@ -10,8 +10,8 @@ const PLANS = [
     icon: '🏫',
     titleEn: 'Class Plan',
     titleSv: 'Klassplan',
-    priceEn: '$29 / month',
-    priceSv: '$29 / månad',
+    priceEn: '$100 / month',
+    priceSv: '$100 / månad',
     limitEn: 'Up to 30 students',
     limitSv: 'Upp till 30 elever',
     featuresEn: ['1 class', 'Up to 30 students', 'AI tutor & study tools', 'Group join code', 'Member management'],
@@ -22,8 +22,8 @@ const PLANS = [
     icon: '🏛️',
     titleEn: 'School Plan',
     titleSv: 'Skolplan',
-    priceEn: '$149 / month',
-    priceSv: '$149 / månad',
+    priceEn: '$500 / month',
+    priceSv: '$500 / månad',
     limitEn: 'Up to 600 students',
     limitSv: 'Upp till 600 elever',
     featuresEn: ['Whole school', 'Up to 600 students', 'AI tutor & study tools', 'Group join code', 'Member management'],
@@ -36,7 +36,8 @@ export default function EducationSetupPage() {
   const nav = useNavigate()
   const [params] = useSearchParams()
 
-  const [planType, setPlanType] = useState('')
+  const paramPlan = params.get('plan')
+  const [planType, setPlanType] = useState(paramPlan === 'class' || paramPlan === 'school' ? paramPlan : '')
   const [groupName, setGroupName] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')

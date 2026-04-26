@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useLang } from '../hooks/useLang'
 import { useTheme } from '../hooks/useTheme'
-import { redirectToCheckout, redirectToPortal, leaveEducationGroup } from '../lib/stripe'
+import { redirectToCheckout, redirectToPortal, leaveEducationGroup, verifyEducationPayment } from '../lib/stripe'
 import { supabase } from '../lib/supabase'
 import { useSets } from '../hooks/useSets'
 import Layout from '../components/Layout'
@@ -63,6 +63,7 @@ export default function SettingsPage() {
       window.history.replaceState({}, '', '/settings')
       let attempts = 0
       pollRef.current = setInterval(async () => {
+        try { await verifyEducationPayment() } catch (_) {}
         await refreshProfile()
         attempts++
         if (attempts >= 8) clearInterval(pollRef.current)
