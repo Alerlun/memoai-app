@@ -114,7 +114,12 @@ export default function SettingsPage() {
   async function handleManageBilling() {
     setStripeErr(''); setLoadingStripe(true)
     try { await redirectToPortal() }
-    catch (e) { setStripeErr(e.message || t('portal_error')); setLoadingStripe(false) }
+    catch (e) {
+      setStripeErr(e.message || t('portal_error'))
+      setLoadingStripe(false)
+      // If the portal reset the account (stale/missing customer), refresh so the UI reflects the DB state
+      if (e.message?.includes('reset')) await refreshProfile()
+    }
   }
 
   async function handleSignOut() {
