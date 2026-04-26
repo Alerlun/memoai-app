@@ -14,7 +14,7 @@ alter table public.profiles
 create table if not exists public.education_groups (
   id                     uuid primary key default gen_random_uuid(),
   name                   text not null,
-  owner_id               uuid not null references auth.users(id) on delete restrict,
+  owner_id               uuid not null references auth.users(id) on delete cascade,
   stripe_subscription_id text unique,
   stripe_customer_id     text,
   join_code              text unique not null,
