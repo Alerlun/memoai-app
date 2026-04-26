@@ -292,7 +292,7 @@ function LeaderboardWidget({ currentUserId, limit = null }) {
 }
 
 export default function HomePage() {
-  const { user, profile, isPro, uploadsThisWeek, FREE_UPLOAD_LIMIT, totalXP } = useAuth()
+  const { user, profile, isPro, canAccess, userRole, educationGroupId, uploadsThisWeek, FREE_UPLOAD_LIMIT, totalXP } = useAuth()
   const { sets, loading, deleteSet } = useSets()
   const { t } = useLang()
   const nav = useNavigate()
@@ -406,8 +406,28 @@ export default function HomePage() {
           <GoalRing count={goalCount} goal={DAILY_GOAL} streak={goalStreak} />
         </div>
 
+        {/* ── Educator nudge — no group set up yet ── */}
+        {userRole === 'educator' && !educationGroupId && (
+          <div style={{ background: 'linear-gradient(135deg,rgba(49,46,129,.5) 0%,rgba(55,48,163,.3) 100%)', border: '1px solid rgba(139,127,245,.3)', borderRadius: 'var(--r)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🎓</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>
+                  {navigator.language?.startsWith('sv') ? 'Ge din klass Education-åtkomst' : 'Give your class Education access'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--t2)' }}>
+                  {navigator.language?.startsWith('sv') ? 'Skapa en grupp eller gå med i en kollegas.' : 'Create a group or join a colleague\'s.'}
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-p btn-sm" style={{ flexShrink: 0 }} onClick={() => nav('/education/welcome')}>
+              {navigator.language?.startsWith('sv') ? 'Kom igång →' : 'Get started →'}
+            </button>
+          </div>
+        )}
+
         {/* ── Upload limit — only when at 0 ── */}
-        {!isPro && uploadsLeft === 0 && (
+        {!canAccess && uploadsLeft === 0 && (
           <div style={{ background: 'var(--rl)', border: '1px solid var(--rd)', borderRadius: 'var(--r)', padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--rd)' }}>⚠️ {t('upload_limit_reached')}</div>
             <button className="btn btn-pro btn-sm" onClick={() => nav('/settings')}>{t('upgrade')}</button>

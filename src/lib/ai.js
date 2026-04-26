@@ -1,25 +1,19 @@
-const MODEL = 'gpt-5.4-nano'
+import { supabase } from './supabase.js'
 
 async function callOpenAI(prompt, maxTokens = 2500, systemPrompt = null) {
-  const key = import.meta.env.VITE_OPENAI_API_KEY
   const messages = []
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
   messages.push({ role: 'user', content: prompt })
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-    },
-    body: JSON.stringify({ model: MODEL, max_completion_tokens: maxTokens, messages }),
+  const { data, error } = await supabase.functions.invoke('call-ai', {
+    body: { messages, max_tokens: maxTokens },
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(`OpenAI ${res.status}: ${err?.error?.message || 'Unknown error'}`)
+  if (error) {
+    let msg = error.message
+    try { const body = await error.context?.json(); msg = body?.error || msg } catch {}
+    throw new Error(msg)
   }
-  const data = await res.json()
-  const raw = data.choices?.[0]?.message?.content || ''
+  const raw = data?.content || ''
   return raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim()
 }
 
@@ -160,14 +154,11 @@ Be warm, patient, encouraging. Keep responses 2-4 sentences. Give hints before f
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: 'user', content: userMessage },
   ]
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}` },
-    body: JSON.stringify({ model: MODEL, max_completion_tokens: 600, messages: [{ role: 'system', content: systemPrompt }, ...messages] }),
+  const { data, error } = await supabase.functions.invoke('call-ai', {
+    body: { messages: [{ role: 'system', content: systemPrompt }, ...messages], max_tokens: 600 },
   })
-  if (!res.ok) throw new Error(`Tutor API ${res.status}`)
-  const data = await res.json()
-  return data.choices?.[0]?.message?.content?.trim() || 'Please try again.'
+  if (error) throw new Error(`Tutor API error`)
+  return data?.content?.trim() || 'Please try again.'
 }
 
 export async function explainCard(question, answer, studyContent) {

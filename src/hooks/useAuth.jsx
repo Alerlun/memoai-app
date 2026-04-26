@@ -201,14 +201,19 @@ export function AuthProvider({ children }) {
   const quizzesCompleted  = profile?.quizzes_completed ?? 0
   const aGrades           = profile?.a_grades ?? 0
 
-  const isPro           = profile?.is_pro === true
-  const proExpiresAt    = profile?.pro_expires_at ?? null
-  const uploadsThisWeek = profile?.uploads_this_week ?? 0
-  const canUpload       = isPro || uploadsThisWeek < FREE_UPLOAD_LIMIT
+  const isPro              = profile?.is_pro === true
+  const proExpiresAt       = profile?.pro_expires_at ?? null
+  const isEducation        = profile?.is_education === true
+  const canAccess          = isPro || isEducation
+  const userRole           = profile?.role ?? null
+  const educationGroupId   = profile?.education_group_id ?? null
+  const uploadsThisWeek    = profile?.uploads_this_week ?? 0
+  const canUpload          = canAccess || uploadsThisWeek < FREE_UPLOAD_LIMIT
 
   return (
     <AuthContext.Provider value={{
       user, profile, loading, isPro, proExpiresAt,
+      isEducation, canAccess, userRole, educationGroupId,
       uploadsThisWeek, FREE_UPLOAD_LIMIT, canUpload,
       signUp, signIn, signOut, refreshProfile,
       totalXP, xpThisWeek, addXP,

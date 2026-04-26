@@ -42,7 +42,7 @@ async function readFileAsText(file) {
 }
 
 export default function UploadPage() {
-  const { user, isPro, canUpload, uploadsThisWeek, FREE_UPLOAD_LIMIT, refreshProfile } = useAuth()
+  const { user, isPro, canAccess, canUpload, uploadsThisWeek, FREE_UPLOAD_LIMIT, refreshProfile } = useAuth()
   const { addSet } = useSets()
   const { t, lang } = useLang()
   const nav = useNavigate()
@@ -233,7 +233,7 @@ export default function UploadPage() {
         </div>
 
         {/* Limit warning */}
-        {!isPro && (
+        {!canAccess && (
           <div style={{ background: canUpload ? 'var(--al)' : 'var(--rl)', border: `1px solid ${canUpload ? 'var(--ac)' : 'var(--rd)'}`, borderRadius: 'var(--r)', padding: '12px 16px', marginBottom: 16 }}>
             {canUpload ? (
               <p style={{ fontSize: 13, color: 'var(--ac)', fontWeight: 600 }}>

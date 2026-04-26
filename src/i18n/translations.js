@@ -150,6 +150,70 @@ export const translations = {
 
     // Delete
     delete_confirm: 'Delete this set?',
+
+    // Auth — role selector
+    iam_student: "I'm a Student",
+    iam_educator: "I'm an Educator",
+    role_student_desc: 'Studying for exams, classes or uni',
+    role_educator_desc: 'Teacher, professor, tutor or instructor',
+    join_code_label: 'Class code',
+    join_code_placeholder: 'Enter code — e.g. AB3XY7',
+    join_code_optional: 'Have a class code? Enter it to get Education access.',
+
+    // Education — plan badge & general
+    education_plan: 'Education Plan',
+    education_active: 'MemoAI Education Active',
+    education_active_desc: 'Unlimited uploads · All features unlocked',
+
+    // Education — settings section (owner)
+    education_group: 'Education Group',
+    edu_group_name: 'Group name',
+    edu_join_code: 'Join code',
+    edu_members: 'Members',
+    edu_member_since: 'Joined',
+    edu_remove_member: 'Remove',
+    edu_copy_code: 'Copy code',
+    edu_copied: 'Copied!',
+    edu_copy_link: 'Copy invite link',
+    edu_manage_billing: '⚙️ Manage / Cancel Subscription',
+    edu_canceling: 'Education Ending Soon',
+    edu_expires_on: 'Access ends',
+    edu_cancel_info: 'All members keep Education access until the end of the current billing period.',
+    edu_reactivate: '↩ Reactivate Subscription',
+    edu_payment_activating: 'Payment received! Activating your Education group…',
+
+    // Education — settings section (student)
+    edu_active_via: 'Education plan active via',
+    edu_leave_group: 'Leave group',
+    edu_leave_confirm: 'Leave this Education group? You will lose Education access.',
+
+    // Education — upsell (educator without group)
+    edu_upsell_title: '🎓 Give Your Class Education Access',
+    edu_upsell_desc: 'Subscribe once — every student you invite gets MemoAI Education instantly.',
+    edu_upsell_feat1: 'Unlimited AI study set generation for all students',
+    edu_upsell_feat2: 'All study modes: flashcards, quiz, tutor & more',
+    edu_upsell_feat3: 'Simple invite code — share in your class group chat',
+    edu_upsell_feat4: 'Works for K-12 and university',
+    edu_upsell_price: '$249 / month — cancel anytime',
+    edu_create_group_btn: '🎓 Create Education Group →',
+
+    // Education setup page
+    edu_setup_title: 'Create Education Group',
+    edu_setup_desc: 'Name your group, then complete payment. Share the invite code with your students.',
+    edu_group_name_label: 'Group name',
+    edu_group_name_placeholder: 'e.g. AP Biology — Period 3, COMP101 Spring 2026',
+    edu_continue_payment: 'Continue to Payment →',
+    edu_setup_success_title: 'Education Group Created!',
+    edu_setup_success_desc: 'Share this code with your students:',
+    edu_setup_link_desc: 'Or share this link:',
+    edu_go_to_settings: 'Go to Settings →',
+    edu_cancelled: 'Payment cancelled. No charges were made.',
+
+    // Join page
+    edu_join_title: 'Join Education Group',
+    edu_join_confirm: 'Join',
+    edu_join_success: 'Welcome! Education access activated.',
+    edu_join_invalid: 'Invalid or inactive join code.',
   },
 
   sv: {
@@ -303,5 +367,69 @@ export const translations = {
 
     // Delete
     delete_confirm: 'Ta bort detta paket?',
+
+    // Auth — role selector
+    iam_student: 'Jag är student',
+    iam_educator: 'Jag är lärare',
+    role_student_desc: 'Studerar inför prov, kurser eller universitetet',
+    role_educator_desc: 'Lärare, professor, handledare eller instruktör',
+    join_code_label: 'Klasskod',
+    join_code_placeholder: 'Ange kod — t.ex. AB3XY7',
+    join_code_optional: 'Har du en klasskod? Ange den för att få Education-åtkomst.',
+
+    // Education — plan badge & general
+    education_plan: 'Education-plan',
+    education_active: 'MemoAI Education aktivt',
+    education_active_desc: 'Obegränsade uppladdningar · Alla funktioner upplåsta',
+
+    // Education — settings section (owner)
+    education_group: 'Utbildningsgrupp',
+    edu_group_name: 'Gruppnamn',
+    edu_join_code: 'Inbjudningskod',
+    edu_members: 'Medlemmar',
+    edu_member_since: 'Gick med',
+    edu_remove_member: 'Ta bort',
+    edu_copy_code: 'Kopiera kod',
+    edu_copied: 'Kopierat!',
+    edu_copy_link: 'Kopiera inbjudningslänk',
+    edu_manage_billing: '⚙️ Hantera / Avsluta prenumeration',
+    edu_canceling: 'Education avslutas snart',
+    edu_expires_on: 'Åtkomst slutar',
+    edu_cancel_info: 'Alla medlemmar behåller Education-åtkomst till slutet av faktureringsperioden.',
+    edu_reactivate: '↩ Återaktivera prenumeration',
+    edu_payment_activating: 'Betalning mottagen! Aktiverar din utbildningsgrupp…',
+
+    // Education — settings section (student)
+    edu_active_via: 'Education-plan aktiv via',
+    edu_leave_group: 'Lämna gruppen',
+    edu_leave_confirm: 'Lämna denna utbildningsgrupp? Du förlorar Education-åtkomst.',
+
+    // Education — upsell (educator without group)
+    edu_upsell_title: '🎓 Ge din klass Education-åtkomst',
+    edu_upsell_desc: 'Prenumerera en gång — varje student du bjuder in får MemoAI Education direkt.',
+    edu_upsell_feat1: 'Obegränsad AI-generering av studiepaket för alla elever',
+    edu_upsell_feat2: 'Alla studielägen: flashcards, quiz, handledare och mer',
+    edu_upsell_feat3: 'Enkel inbjudningskod — dela i din klassgruppchat',
+    edu_upsell_feat4: 'Fungerar för grundskola, gymnasium och universitet',
+    edu_upsell_price: '2 490 kr / månad — avsluta när som helst',
+    edu_create_group_btn: '🎓 Skapa utbildningsgrupp →',
+
+    // Education setup page
+    edu_setup_title: 'Skapa utbildningsgrupp',
+    edu_setup_desc: 'Namnge din grupp och genomför betalning. Dela sedan inbjudningskoden med dina elever.',
+    edu_group_name_label: 'Gruppnamn',
+    edu_group_name_placeholder: 't.ex. Biologi Klass 9B, KOMP101 VT2026',
+    edu_continue_payment: 'Fortsätt till betalning →',
+    edu_setup_success_title: 'Utbildningsgrupp skapad!',
+    edu_setup_success_desc: 'Dela denna kod med dina elever:',
+    edu_setup_link_desc: 'Eller dela denna länk:',
+    edu_go_to_settings: 'Gå till inställningar →',
+    edu_cancelled: 'Betalningen avbröts. Inga avgifter togs ut.',
+
+    // Join page
+    edu_join_title: 'Gå med i utbildningsgrupp',
+    edu_join_confirm: 'Gå med',
+    edu_join_success: 'Välkommen! Education-åtkomst aktiverad.',
+    edu_join_invalid: 'Ogiltig eller inaktiv inbjudningskod.',
   }
 }

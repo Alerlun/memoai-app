@@ -1,18 +1,24 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useLang } from '../hooks/useLang'
+import { joinEducationGroup } from '../lib/stripe'
+import { supabase } from '../lib/supabase'
 import logoSrc from '../assets/logo.png'
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, refreshProfile } = useAuth()
   const { t, lang, switchLang } = useLang()
   const nav = useNavigate()
+  const [searchParams] = useSearchParams()
+
   const [tab, setTab] = useState('login')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [le, setLe] = useState(''); const [lp, setLp] = useState('')
   const [sn, setSn] = useState(''); const [se, setSe] = useState(''); const [sp, setSp] = useState('')
+  const [role, setRole] = useState('')
+  const [joinCode, setJoinCode] = useState(searchParams.get('code') ?? '')
 
   async function handleLogin(e) {
     e.preventDefault(); setErr(''); setLoading(true)
@@ -24,9 +30,25 @@ export default function AuthPage() {
   async function handleSignup(e) {
     e.preventDefault(); setErr(''); setLoading(true)
     if (sp.length < 6) { setErr(t('password_too_short')); setLoading(false); return }
-    try { await signUp(se.trim(), sp, sn.trim()); nav('/') }
-    catch (ex) { setErr(ex.message?.includes('already') ? (lang === 'sv' ? 'E-postadressen används redan.' : 'Email already registered.') : t('could_not_create')) }
-    finally { setLoading(false) }
+    try {
+      // Set redirect destination before auth fires so PublicRoute picks it up
+      if (role === 'educator') localStorage.setItem('memoai_redirect', '/education/welcome')
+
+      const { data } = await signUp(se.trim(), sp, sn.trim())
+
+      // Persist role to profile
+      if (role && data?.user?.id) {
+        await supabase.from('profiles').update({ role }).eq('id', data.user.id)
+      }
+
+      // Auto-join group if student provided a code
+      if (role === 'student' && joinCode.trim()) {
+        try { await joinEducationGroup(joinCode.trim()) } catch { /* non-fatal */ }
+      }
+    } catch (ex) {
+      localStorage.removeItem('memoai_redirect')
+      setErr(ex.message?.includes('already') ? (lang === 'sv' ? 'E-postadressen används redan.' : 'Email already registered.') : t('could_not_create'))
+    } finally { setLoading(false) }
   }
 
   return (
@@ -115,8 +137,39 @@ export default function AuthPage() {
             <form onSubmit={handleSignup}>
               <div style={{ marginBottom: 6 }}>
                 <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-.4px', color: 'var(--tx)', marginBottom: 5 }}>{t('create_account')}</div>
-                <div style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 24 }}>{t('free_forever')}</div>
+                <div style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 20 }}>{t('free_forever')}</div>
               </div>
+
+              {/* Role selector */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {[
+                    { key: 'student',  label: t('iam_student'),  desc: t('role_student_desc'),  icon: '🎒' },
+                    { key: 'educator', label: t('iam_educator'), desc: t('role_educator_desc'), icon: '🏫' },
+                  ].map(r => (
+                    <button
+                      key={r.key}
+                      type="button"
+                      onClick={() => setRole(r.key)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: `1.5px solid ${role === r.key ? 'rgba(139,127,245,.6)' : 'rgba(255,255,255,.08)'}`,
+                        background: role === r.key ? 'rgba(139,127,245,.12)' : 'rgba(255,255,255,.03)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all .15s',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>{r.icon}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: role === r.key ? 'var(--ac)' : 'var(--tx)', marginBottom: 2 }}>{r.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--t3)', lineHeight: 1.3 }}>{r.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="field">
                 <label>{t('full_name')}</label>
                 <input className="inp" type="text" value={sn} onChange={e => setSn(e.target.value)} placeholder="Alex Johnson" required />
@@ -129,6 +182,27 @@ export default function AuthPage() {
                 <label>{t('password')}</label>
                 <input className="inp" type="password" value={sp} onChange={e => setSp(e.target.value)} placeholder={t('min_6_chars')} required />
               </div>
+
+              {/* Join code — only shown for students */}
+              {role === 'student' && (
+                <div className="field">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {t('join_code_label')}
+                    <span style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 400 }}>({lang === 'sv' ? 'valfritt' : 'optional'})</span>
+                  </label>
+                  <input
+                    className="inp"
+                    type="text"
+                    value={joinCode}
+                    onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                    placeholder={t('join_code_placeholder')}
+                    maxLength={8}
+                    style={{ fontFamily: 'monospace', letterSpacing: 2, textTransform: 'uppercase' }}
+                  />
+                  <p style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4 }}>{t('join_code_optional')}</p>
+                </div>
+              )}
+
               <button className="btn btn-p btn-lg btn-w" type="submit" disabled={loading} style={{ marginTop: 8, borderRadius: 12, fontSize: 14 }}>
                 {loading ? t('creating') : `${t('sign_up')} →`}
               </button>

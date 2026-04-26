@@ -21,13 +21,12 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    // Get the authenticated user from the JWT
+    const cl = parseInt(req.headers.get('content-length') ?? '0', 10)
+    if (cl > 4_096) return new Response(JSON.stringify({ error: 'Payload too large' }), { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('No authorization header')
 

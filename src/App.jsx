@@ -12,12 +12,20 @@ import SettingsPage from './pages/SettingsPage'
 import TermsPage from './pages/TermsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import AchievementsPage from './pages/AchievementsPage'
+import EducationSetupPage from './pages/EducationSetupPage'
+import EducationWelcomePage from './pages/EducationWelcomePage'
+import JoinGroupPage from './pages/JoinGroupPage'
+import PlanPage from './pages/PlanPage'
 import CommandPalette from './components/CommandPalette'
 
-/* Redirect authenticated users away from /auth */
+/* Redirect authenticated users away from /auth.
+   Reads a one-shot localStorage key so post-signup flows can pick the destination. */
 function PublicRoute({ children }) {
   const { user } = useAuth()
-  return !user ? children : <Navigate to="/" replace />
+  if (!user) return children
+  const dest = localStorage.getItem('memoai_redirect') ?? '/'
+  localStorage.removeItem('memoai_redirect')
+  return <Navigate to={dest} replace />
 }
 
 /* Protect dashboard routes — redirect to /auth if not signed in */
@@ -62,6 +70,12 @@ function AppRoutes() {
       <Route path="/study/:id"  element={<PrivateRoute><StudyPage /></PrivateRoute>} />
       <Route path="/settings"      element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
       <Route path="/achievements" element={<PrivateRoute><AchievementsPage /></PrivateRoute>} />
+      <Route path="/plan"         element={<PrivateRoute><PlanPage /></PrivateRoute>} />
+
+      {/* Education */}
+      <Route path="/education/welcome" element={<PrivateRoute><EducationWelcomePage /></PrivateRoute>} />
+      <Route path="/education/setup"   element={<PrivateRoute><EducationSetupPage /></PrivateRoute>} />
+      <Route path="/join/:code"        element={<JoinGroupPage />} />
 
       {/* Public legal pages */}
       <Route path="/terms"   element={<TermsPage />} />
