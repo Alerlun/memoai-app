@@ -2,13 +2,11 @@ import { readFileSync, writeFileSync } from 'fs'
 import { execSync } from 'child_process'
 
 const mode = process.argv[2]
-if (!['test', 'live'].includes(mode)) {
-  console.error('Usage: npm run stripe:test  OR  npm run stripe:live')
-  process.exit(1)
-}
+const full = process.argv.includes('--full')
 
-if (mode === 'live') {
-  console.log('\n⚠️  Switching to LIVE mode — this uses real money!\n')
+if (!['test', 'live'].includes(mode)) {
+  console.error('Usage: npm run stripe:test | npm run stripe:test:full | npm run stripe:live')
+  process.exit(1)
 }
 
 function parseEnv(content) {
@@ -45,33 +43,57 @@ let stripeVars
 try {
   stripeVars = parseEnv(readFileSync(`.env.stripe.${mode}`, 'utf8'))
 } catch {
-  console.error(`❌ File .env.stripe.${mode} not found.`)
-  console.error(`   Copy .env.stripe.${mode}.example to .env.stripe.${mode} and fill in your keys.`)
+  console.error(`\n❌  .env.stripe.${mode} not found.`)
+  console.error(`    Copy .env.stripe.${mode}.example → .env.stripe.${mode} and fill in your keys.\n`)
   process.exit(1)
 }
 
-const FRONTEND_KEYS = ['VITE_STRIPE_PUBLISHABLE_KEY', 'VITE_STRIPE_PRO_PRICE_ID']
+const FRONTEND_KEYS = ['VITE_STRIPE_PUBLISHABLE_KEY', 'VITE_STRIPE_PRO_PRICE_ID', 'VITE_STRIPE_EDUCATION_PRICE_ID']
 const BACKEND_KEYS  = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_EDUCATION_PRICE_ID']
 
+// Always update local .env (Vite dev server)
 const frontendUpdates = Object.fromEntries(
   FRONTEND_KEYS.filter(k => stripeVars[k]).map(k => [k, stripeVars[k]])
 )
 applyToEnvFile('.env', frontendUpdates)
-console.log('✅ .env updated (frontend keys)')
+console.log('✅  .env updated (local frontend keys)')
 
-const secretArgs = BACKEND_KEYS
-  .filter(k => stripeVars[k])
-  .map(k => `${k}=${stripeVars[k]}`)
-  .join(' ')
+const updateBackend = mode === 'live' || full
 
-if (secretArgs) {
-  console.log('⏳ Updating Supabase secrets...')
-  execSync(`npx supabase secrets set ${secretArgs}`, { stdio: 'inherit' })
-  console.log('✅ Supabase secrets updated')
-} else {
-  console.warn(`⚠️  No backend keys found in .env.stripe.${mode}`)
+if (updateBackend) {
+  if (mode === 'test') {
+    console.log('\n⚠️   WARNING: Supabase secrets will switch to TEST mode.')
+    console.log('    Your production backend will temporarily use test keys.')
+    console.log('    Run `npm run stripe:live` immediately after testing.\n')
+  }
+
+  const secretArgs = BACKEND_KEYS
+    .filter(k => stripeVars[k])
+    .map(k => `${k}=${stripeVars[k]}`)
+    .join(' ')
+
+  if (secretArgs) {
+    console.log('⏳  Updating Supabase secrets...')
+    execSync(`npx supabase secrets set ${secretArgs}`, { stdio: 'inherit' })
+    console.log('✅  Supabase secrets updated')
+  } else {
+    console.warn(`⚠️   No backend keys found in .env.stripe.${mode}`)
+  }
 }
 
+// Write mode marker so the pre-push hook knows what state we're in
+// test-local = only frontend changed, Supabase is still live (safe to push)
+// test-full  = Supabase is in test mode (pre-push hook will restore before push)
+// live       = everything is live (safe to push)
+const marker = mode === 'live' ? 'live' : full ? 'test-full' : 'test-local'
+writeFileSync('.stripe-mode', marker)
+
 const pk = stripeVars.VITE_STRIPE_PUBLISHABLE_KEY ?? ''
-console.log(`\n🎉 Stripe is now in ${mode.toUpperCase()} mode`)
-console.log(`   Publishable key: ${pk.slice(0, 15)}...`)
+const modeLabel = mode.toUpperCase() + (full ? ' (full — Supabase updated)' : mode === 'test' ? ' (local only — Supabase unchanged)' : '')
+console.log(`\n🎉  Stripe is now in ${modeLabel} mode`)
+console.log(`    Publishable key: ${pk.slice(0, 18)}...`)
+
+if (mode === 'test' && !full) {
+  console.log('\n    Note: Checkout flow will not work end-to-end (frontend is test, backend is live).')
+  console.log('    Use `npm run stripe:test:full` for full payment flow testing.')
+}
